@@ -518,6 +518,25 @@ class SecondPage(BasePage):
             self.on_return()
 
 
+def _format_milliseconds(milliseconds: int | float | str) -> str:
+    """Return a human readable seconds representation for a millisecond value."""
+
+    try:
+        value = float(milliseconds)
+    except (TypeError, ValueError):
+        return "0s"
+
+    if value <= 0:
+        return "0s"
+
+    seconds = value / 1000.0
+    if seconds.is_integer():
+        return f"{int(seconds)}s"
+    if seconds >= 10:
+        return f"{seconds:.1f}s"
+    return f"{seconds:.2f}s"
+
+
 class ThirdPage(BasePage):
     """Page that shows the measured width in millimetres and monitoring logic."""
 
@@ -620,25 +639,6 @@ class ThirdPage(BasePage):
 
         ttk.Button(self, text="返回", command=self.return_home).pack(pady=10)
 
-    @staticmethod
-    def _format_seconds(milliseconds: int | float | str) -> str:
-        """Return a human readable seconds representation for a millisecond value."""
-
-        try:
-            value = float(milliseconds)
-        except (TypeError, ValueError):
-            return "0s"
-
-        if value <= 0:
-            return "0s"
-
-        seconds = value / 1000.0
-        if seconds.is_integer():
-            return f"{int(seconds)}s"
-        if seconds >= 10:
-            return f"{seconds:.1f}s"
-        return f"{seconds:.2f}s"
-
     def _load_inflator_host(self) -> None:
         if not self.state.inflator_host:
             return
@@ -696,7 +696,7 @@ class ThirdPage(BasePage):
         self.state.persist(CONFIG_FILE)
         self.post_wait_entry.delete(0, tk.END)
         self.post_wait_entry.insert(0, str(self.state.post_inflate_wait_ms))
-        formatted_wait = self._format_seconds(self.state.post_inflate_wait_ms)
+        formatted_wait = _format_milliseconds(self.state.post_inflate_wait_ms)
         self.status_var.set(f"已保存等待时长: {formatted_wait}")
 
     def _update_data_loop(self) -> None:
@@ -853,7 +853,7 @@ class ThirdPage(BasePage):
     def _on_inflate_success(self) -> None:
         wait_ms = max(0, int(self.state.post_inflate_wait_ms))
         if wait_ms > 0:
-            wait_seconds = self._format_seconds(wait_ms)
+            wait_seconds = _format_milliseconds(wait_ms)
             self.status_var.set(f"加气成功，等待震荡稳定...({wait_seconds})")
         else:
             self.status_var.set("加气成功")
@@ -882,8 +882,14 @@ class ThirdPage(BasePage):
 
     def toggle_monitoring(self) -> None:
         if not self.is_monitoring:
+            value = self.threshold_entry.get().strip()
+            if not value:
+                messagebox.showerror("输入错误", "请输入正确的阈值")
+                self.threshold = None
+                return
+
             try:
-                self.threshold = float(self.threshold_entry.get())
+                self.threshold = float(value)
             except ValueError:
                 messagebox.showerror("输入错误", "请输入正确的阈值")
                 self.threshold = None
