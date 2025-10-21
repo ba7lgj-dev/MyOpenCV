@@ -30,7 +30,6 @@ from utils import http
 CONFIG_FILE = "url.txt"
 REFRESH_INTERVAL_SECONDS = 0.5
 STREAM_UPDATE_INTERVAL_SECONDS = 3
-INFLATE_ENDPOINT = "/control?pin=D1&duration=500"
 
 
 @dataclasses.dataclass
@@ -70,17 +69,17 @@ class AppState:
         state = cls()
         try:
             with open(path, "r", encoding="utf-8") as file:
-                lines = [line.strip() for line in file.read().splitlines() if line.strip()]
+                lines = file.read().splitlines()
         except FileNotFoundError:
             return state
 
         if lines:
-            state.update_camera_host(lines[0])
+            state.update_camera_host(lines[0].strip())
         if len(lines) > 1:
-            state.update_inflator_host(lines[1])
+            state.update_inflator_host(lines[1].strip())
         if len(lines) > 2:
             try:
-                state.inflate_duration_seconds = max(1, int(lines[2]))
+                state.inflate_duration_seconds = max(1, int(lines[2].strip()))
             except ValueError:
                 state.inflate_duration_seconds = 10
         return state
@@ -92,7 +91,7 @@ class AppState:
                 self.inflator_host,
                 str(self.inflate_duration_seconds),
             ]
-            file.write("\n".join(lines))
+            file.write("\n".join(lines) + "\n")
 
 
 class BasePage(tk.Toplevel):
@@ -484,7 +483,9 @@ class ThirdPage(BasePage):
         self.inflate_button.config(state=tk.DISABLED, text="等待中...")
 
         def request_inflate() -> None:
-            url = f"{base_url}{INFLATE_ENDPOINT}"
+            duration_ms = max(1, self.state.inflate_duration_seconds) * 1000
+            endpoint = f"/control?pin=D1&duration={duration_ms}"
+            url = f"{base_url}{endpoint}"
             try:
                 response = requests.get(url, timeout=10)
                 response.raise_for_status()
