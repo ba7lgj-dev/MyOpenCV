@@ -24,6 +24,20 @@ from PIL import Image, ImageTk
 
 import camera.camera
 from camera.camera import CameraProcessingError, getImage
+
+
+def _fetch_image(
+    base_url: str,
+    line_position_ratio: float,
+):
+    """Call ``getImage`` with backwards compatible fallbacks."""
+
+    try:
+        return getImage(base_url, line_position_ratio=line_position_ratio)
+    except TypeError as exc:  # pragma: no cover - defensive guard for legacy builds
+        if "line_position_ratio" not in str(exc):
+            raise
+        return getImage(base_url)
 from utils import http
 
 
@@ -273,9 +287,9 @@ class SecondPage(BasePage):
                 continue
 
             try:
-                frame, width = getImage(
+                frame, width = _fetch_image(
                     self.state.camera_capture_url,
-                    line_position_ratio=self.state.detection_line_ratio,
+                    self.state.detection_line_ratio,
                 )
             except CameraProcessingError as exc:
                 self.after(0, lambda e=exc: self._status_var.set(f"请调整图像参数: {e}"))
@@ -325,9 +339,9 @@ class SecondPage(BasePage):
             return
 
         try:
-            _, pixel_length = getImage(
+            _, pixel_length = _fetch_image(
                 self.state.camera_capture_url,
-                line_position_ratio=self.state.detection_line_ratio,
+                self.state.detection_line_ratio,
             )
         except CameraProcessingError as exc:
             messagebox.showerror("测量失败", f"无法获取图像: {exc}")
@@ -515,9 +529,9 @@ class ThirdPage(BasePage):
                 continue
 
             try:
-                _, length_px = getImage(
+                _, length_px = _fetch_image(
                     self.state.camera_capture_url,
-                    line_position_ratio=self.state.detection_line_ratio,
+                    self.state.detection_line_ratio,
                 )
             except CameraProcessingError as exc:
                 self.after(0, lambda e=exc: self.status_var.set(f"图像采集失败: {e}"))
