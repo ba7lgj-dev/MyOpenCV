@@ -1,5 +1,4 @@
 # http_requests.py
-import json
 import time
 from io import BytesIO
 
@@ -8,27 +7,13 @@ import numpy as np
 import requests
 import urllib3
 
+from utils.notifications import OPERATIONS_WEBHOOK, notifier
+
 
 def send_wechat_work_message(webhook_url, message_content):
-    """
-    向企业微信 webhook 发送文本消息
-    :param webhook_url: 企业微信机器人的 webhook 地址
-    :param message_content: 消息内容
-    """
-    headers = {'Content-Type': 'application/json'}
-    data = {
-        "msgtype": "text",
-        "text": {
-            "content": message_content
-        }
-    }
-    response = requests.post(webhook_url, headers=headers, data=json.dumps(data))
+    """Send a text notification through the shared notifier."""
 
-    # 检查响应状态码
-    if response.status_code != 200:
-        print(f"发送失败，错误码：{response.status_code}, 错误信息：{response.text}")
-    else:
-        print("消息发送成功")
+    notifier.send_text(webhook_url, message_content)
 
 def send_get_request(url, params=None, headers=None):
     """
@@ -62,6 +47,7 @@ def get_image_from_url(url, max_retries=10, timeout=5):
                 image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                 if image is not None:
                     response.close()
+                    notifier.notify_recovery("camera_stream", OPERATIONS_WEBHOOK, "摄像头连接已恢复")
                     return image
                 else:
                     print("无法解码图像数据")
@@ -70,9 +56,13 @@ def get_image_from_url(url, max_retries=10, timeout=5):
             response.close()
         except (requests.exceptions.RequestException, urllib3.exceptions.ProtocolError) as e:
             print(f"请求出错: {e}，正在重试 {retries + 1}...")
-            webhook_url = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=1ffec59d-3ef7-4fc7-939f-2c69dd0d7aa6"
-            message = f"请求出错: {e}，正在重试 {retries + 1}..."
-            send_wechat_work_message(webhook_url, message)
+            short_error = str(e)
+            notifier.notify_error(
+                "camera_stream",
+                OPERATIONS_WEBHOOK,
+                f"摄像头异常，重试中：{short_error}",
+                escalate_after=3,
+            )
             retries += 1
             time.sleep(1)  # 等待1秒后重试
     print("达到最大重试次数，请求失败。")
