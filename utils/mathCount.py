@@ -1,66 +1,77 @@
+"""Utility maths helpers used by the image processing pipeline."""
+
+from __future__ import annotations
+
 import math
+from typing import Optional, Tuple
 
 
-def find_midpoint(point1, point2):
-    """计算两点的中点"""
+Point = Tuple[int, int]
+
+
+def find_midpoint(point1: Point, point2: Point) -> Point:
+    """Return the midpoint between two points."""
+
     return (int((point1[0] + point2[0]) / 2), int((point1[1] + point2[1]) / 2))
 
 
-def line_slope(point1, point2):
-    """计算两点间直线的斜率"""
-    if point1[0] == point2[0]:  # 避免除以零情况，此时为垂直线
-        return float('inf')
+def line_slope(point1: Point, point2: Point) -> float:
+    """Calculate the slope of the line passing through two points."""
+
+    if point1[0] == point2[0]:
+        return float("inf")
     return (point2[1] - point1[1]) / (point2[0] - point1[0])
 
 
-def perpendicular_line_slope(slope):
-    """计算垂直线的斜率"""
-    return -1 / slope if slope != float('inf') else 0
+def perpendicular_line_slope(slope: float) -> float:
+    """Return the slope of the line perpendicular to the supplied slope."""
+
+    if slope == 0:
+        return float("inf")
+    if slope == float("inf"):
+        return 0
+    return -1 / slope
 
 
-def line_equation_point(slope, intercept, x):
-    """给定斜率和截距，计算y值"""
+def line_equation_point(slope: float, intercept: float, x: float) -> float:
+    """Calculate the Y value for a line defined by slope and intercept."""
+
     return slope * x + intercept
 
 
-def intersection_point(line1_slope, line1_intercept, line2_slope, line2_intercept):
-    """计算两直线的交点"""
-    if line1_slope != line2_slope:  # 确保不是同一直线
-        x = (line2_intercept - line1_intercept) / (line1_slope - line2_slope)
-        y = line1_slope * x + line1_intercept
-        return (int (x),int (y))
-    else:
-        # 如果是同一直线或者垂直线情况未处理，这里简化处理，实际情况可能需要更复杂的逻辑
+def intersection_point(
+    line1_slope: float,
+    line1_intercept: float,
+    line2_slope: float,
+    line2_intercept: float,
+) -> Optional[Point]:
+    """Calculate the intersection between two infinite lines."""
+
+    if line1_slope == line2_slope:
         return None
 
+    x = (line2_intercept - line1_intercept) / (line1_slope - line2_slope)
+    y = line1_slope * x + line1_intercept
+    return int(x), int(y)
 
-def find_intersection(A, B, C, D):
-    """计算垂线与另一线段的交点"""
-    # 计算AB中点
+
+def find_intersection(A: Point, B: Point, C: Point, D: Point) -> Optional[Point]:
+    """Calculate the intersection point of the perpendicular from AB to CD."""
+
     mid_AB = find_midpoint(A, B)
-
-    # 计算AB线段的斜率
     slope_AB = line_slope(A, B)
-
-    # 计算垂直于AB的直线斜率
     slope_perpendicular = perpendicular_line_slope(slope_AB)
-
-    # 由于垂线通过AB中点，可以设定为y = mx + c形式，其中m是斜率，c是y轴截距
-    # 用中点解出c
     c_perpendicular = mid_AB[1] - slope_perpendicular * mid_AB[0]
 
-    # 计算线段CD的斜率和截距
     slope_CD = line_slope(C, D)
     c_CD = C[1] - slope_CD * C[0]
 
-    # 计算交点
-    intersect_point = intersection_point(slope_perpendicular, c_perpendicular, slope_CD, c_CD)
+    return intersection_point(slope_perpendicular, c_perpendicular, slope_CD, c_CD)
 
-    return intersect_point
 
-def distance_between_points(point1, point2):
-    """计算并返回两点之间的距离"""
+def distance_between_points(point1: Point, point2: Point) -> float:
+    """Return the Euclidean distance between two points."""
+
     x1, y1 = point1
     x2, y2 = point2
-    distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-    return distance
+    return math.hypot(x2 - x1, y2 - y1)
