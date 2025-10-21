@@ -1,7 +1,12 @@
+import logging
 import time
 
 import cv2
 import numpy as np
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
+WAIT_BETWEEN_IMAGES_MS = 1000
 
 i = 1
 
@@ -66,5 +71,6 @@ while i<=57:
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
 
     cv2.imwrite("result" + "/result_img" + str(i) + ".jpg", result_img)
-    time.sleep(1)
+    logging.info("等待 %d ms 后处理下一张图像", WAIT_BETWEEN_IMAGES_MS)
+    time.sleep(WAIT_BETWEEN_IMAGES_MS / 1000.0)
     i = i+1

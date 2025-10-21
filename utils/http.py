@@ -36,6 +36,9 @@ def send_get_request(url, params=None, headers=None):
         logger.exception("请求发生错误: %s", e)
         return None
 
+RETRY_DELAY_MS = 1000
+
+
 def get_image_from_url(url, max_retries=10, timeout=5):
     retries = 0
     while True:
@@ -68,5 +71,6 @@ def get_image_from_url(url, max_retries=10, timeout=5):
                 escalate_after=3,
             )
             retries += 1
-            time.sleep(1)  # 等待1秒后重试
+            logger.info("摄像头请求失败，%d ms 后重试", RETRY_DELAY_MS)
+            time.sleep(RETRY_DELAY_MS / 1000.0)
     logger.error("达到最大重试次数，请求失败。")

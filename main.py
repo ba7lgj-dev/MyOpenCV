@@ -15,7 +15,7 @@ import logging
 import sys
 import threading
 import time
-from typing import Optional
+from typing import Any, Callable, Optional
 
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -52,6 +52,16 @@ def _fetch_image(
 _EXCEPTION_HOOK_INSTALLED = False
 
 
+def _wait_with_logging(event: threading.Event, timeout_ms: float, description: str) -> bool:
+    """Wait for an event while logging the timeout in milliseconds."""
+
+    safe_timeout_ms = max(0.0, float(timeout_ms))
+    logger.info("等待 '%s'，最长 %d ms", description, int(round(safe_timeout_ms)))
+    result = event.wait(safe_timeout_ms / 1000.0)
+    logger.info("'%s' 等待结束，事件触发=%s", description, result)
+    return result
+
+
 def _install_exception_hook() -> None:
     """Send a notification when an uncaught exception terminates the app."""
 
@@ -80,8 +90,8 @@ def _install_exception_hook() -> None:
 
 
 CONFIG_FILE = "url.txt"
-REFRESH_INTERVAL_SECONDS = 0.5
-STREAM_UPDATE_INTERVAL_SECONDS = 3
+REFRESH_INTERVAL_MS = 500
+STREAM_UPDATE_INTERVAL_MS = 3000
 
 
 @dataclasses.dataclass
@@ -233,6 +243,19 @@ class BasePage(tk.Toplevel):
         self.resizable(True, True)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
+    def schedule_after(
+        self,
+        delay_ms: int,
+        callback: Callable[..., Any],
+        description: str,
+        *args: Any,
+    ) -> str:
+        """Wrapper around ``after`` that logs scheduled delays."""
+
+        safe_delay = max(0, int(delay_ms))
+        logger.info("计划延迟任务 '%s'，延迟 %d ms", description, safe_delay)
+        return self.after(safe_delay, callback, *args)
+
     def on_close(self) -> None:
         notifier.notify_info("ui_close", OPERATIONS_WEBHOOK, f"{self.__class__.__name__} 页面关闭")
         self.destroy()
@@ -279,7 +302,7 @@ class HomePage(BasePage):
 
         self.state.persist(CONFIG_FILE)
         self.info_label.config(text="连接成功！")
-        self.after(500, self.open_second_page)
+        self.schedule_after(500, self.open_second_page, "打开实时监控页面")
 
     def open_second_page(self) -> None:
         self.withdraw()
@@ -382,7 +405,11 @@ class SecondPage(BasePage):
             self._line_position_label.config(text=f"{value:.0f}%")
         if self._line_position_update_job:
             self.after_cancel(self._line_position_update_job)
-        self._line_position_update_job = self.after(300, self._commit_line_position)
+        self._line_position_update_job = self.schedule_after(
+            300,
+            self._commit_line_position,
+            "更新检测线位置",
+        )
 
     def _commit_line_position(self) -> None:
         self._line_position_update_job = None
@@ -477,14 +504,17 @@ class SecondPage(BasePage):
         self._draw_image(photo)
 
     def _wait_for_next_frame(self) -> None:
-        start = time.time()
+        deadline = time.perf_counter() + STREAM_UPDATE_INTERVAL_MS / 1000.0
         while not self._image_stop_event.is_set():
-            remaining = STREAM_UPDATE_INTERVAL_SECONDS - (time.time() - start)
-            if remaining <= 0:
+            remaining_ms = (deadline - time.perf_counter()) * 1000.0
+            if remaining_ms <= 0:
+                logger.info("等待下一帧超时，间隔 %d ms", STREAM_UPDATE_INTERVAL_MS)
                 return
-            if self._refresh_event.wait(timeout=remaining):
+            if _wait_with_logging(self._refresh_event, remaining_ms, "图像刷新事件"):
+                logger.info("接收到图像刷新事件，提前结束等待")
                 self._refresh_event.clear()
                 return
+        logger.info("检测到图像停止事件，结束帧等待")
 
     def open_third_page(self) -> None:
         if not self.real_length_entry:
@@ -719,7 +749,7 @@ class ThirdPage(BasePage):
         while not self._stop_event.is_set():
             if not self.state.camera_capture_url:
                 self.after(0, lambda: self.status_var.set("未配置摄像头地址"))
-                self._stop_event.wait(REFRESH_INTERVAL_SECONDS)
+                _wait_with_logging(self._stop_event, REFRESH_INTERVAL_MS, "第三页数据刷新间隔")
                 continue
 
             try:
@@ -735,7 +765,7 @@ class ThirdPage(BasePage):
                     f"图像采集失败: {exc}",
                     escalate_after=2,
                 )
-                self._stop_event.wait(REFRESH_INTERVAL_SECONDS)
+                _wait_with_logging(self._stop_event, REFRESH_INTERVAL_MS, "第三页数据刷新间隔")
                 continue
             except Exception as exc:  # noqa: BLE001 - keep monitoring alive on unexpected errors
                 self.after(0, lambda e=exc: self.status_var.set(f"未知错误: {e}"))
@@ -745,14 +775,14 @@ class ThirdPage(BasePage):
                     f"监控异常: {exc}",
                     escalate_after=2,
                 )
-                self._stop_event.wait(REFRESH_INTERVAL_SECONDS)
+                _wait_with_logging(self._stop_event, REFRESH_INTERVAL_MS, "第三页数据刷新间隔")
                 continue
 
             length_mm = length_px * self.rate
             notifier.notify_recovery("camera_processing", OPERATIONS_WEBHOOK, "图像采集恢复正常")
             notifier.notify_recovery("monitoring_unknown", OPERATIONS_WEBHOOK, "监控异常已恢复")
             self.after(0, lambda mm=length_mm, px=length_px: self._handle_measurement(mm, px))
-            self._stop_event.wait(REFRESH_INTERVAL_SECONDS)
+            _wait_with_logging(self._stop_event, REFRESH_INTERVAL_MS, "第三页数据刷新间隔")
 
     def _handle_measurement(self, length_mm: float, length_px: int) -> None:
         if length_px <= 0:
@@ -869,14 +899,16 @@ class ThirdPage(BasePage):
     def _on_inflate_success(self) -> None:
         wait_ms = max(0, int(self.state.post_inflate_wait_ms))
         if wait_ms > 0:
-            wait_seconds = _format_milliseconds(wait_ms)
-            self.status_var.set(f"加气成功，等待震荡稳定...({wait_seconds})")
+            wait_label = _format_milliseconds(wait_ms)
+            self.status_var.set(f"加气成功，等待震荡稳定...({wait_label})")
+            logger.info("加气完成，等待 %d ms 以稳定读数", wait_ms)
         else:
             self.status_var.set("加气成功")
+            logger.info("加气完成，不需要额外等待")
         self.trigger_count = 0
         self._width_alert_active = False
         notifier.notify_recovery("inflate_request", OPERATIONS_WEBHOOK, "加气控制恢复正常")
-        self.after(wait_ms, self._remove_inflate_button)
+        self.schedule_after(wait_ms, self._remove_inflate_button, "恢复加气按钮显示")
 
     def _on_inflate_error(self, exc: Exception) -> None:
         message = str(exc)
