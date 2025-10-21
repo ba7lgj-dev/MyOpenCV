@@ -6,7 +6,11 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=[],
+    hiddenimports=[
+        'utils.notifications',
+        'utils.http',
+        'utils.mathCount',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
