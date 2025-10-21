@@ -10,8 +10,13 @@ from typing import Deque, Dict
 
 import requests
 
+from utils.logging_utils import get_logger
+
 ALERT_WEBHOOK = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=b3b26998-1042-472e-af7d-2b0649233be6"
 OPERATIONS_WEBHOOK = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=1ffec59d-3ef7-4fc7-939f-2c69dd0d7aa6"
+
+
+logger = get_logger(__name__)
 
 
 class NotificationManager:
@@ -26,6 +31,7 @@ class NotificationManager:
 
     def send_text(self, webhook_url: str, message: str) -> bool:
         if not webhook_url or not message:
+            logger.debug("跳过发送通知，缺少必要信息: webhook=%s", bool(webhook_url))
             return False
         with self._lock:
             return self._send_locked(webhook_url, self._truncate_message(message))
@@ -53,6 +59,7 @@ class NotificationManager:
             elif escalate_after > 0 and count == escalate_after:
                 message = f"{base_message}（连续{count}次，请尽快排查）"
             else:
+                logger.debug("错误通知被抑制: %s (count=%d)", category, count)
                 return False
 
             return self._send_locked(webhook_url, message)
@@ -61,6 +68,7 @@ class NotificationManager:
         with self._lock:
             state = self._error_state.get(category)
             if not state or not state.get("active"):
+                logger.debug("没有活动的错误状态需要恢复: %s", category)
                 return False
             state["count"] = 0
             state["active"] = False
@@ -73,14 +81,16 @@ class NotificationManager:
 
     def _send_locked(self, webhook_url: str, message: str) -> bool:
         if not webhook_url or not message:
+            logger.debug("跳过发送通知，缺少必要信息: webhook=%s", bool(webhook_url))
             return False
         if not self._can_send_locked():
-            print("通知发送频率已达上限，消息被丢弃")
+            logger.warning("通知发送频率已达上限，消息被丢弃: %s", message)
             return False
         payload = {
             "msgtype": "text",
             "text": {"content": message},
         }
+        logger.info("准备发送通知: %s", message)
         try:
             response = requests.post(
                 webhook_url,
@@ -90,8 +100,10 @@ class NotificationManager:
             )
             response.raise_for_status()
         except requests.RequestException:
+            logger.exception("通知发送失败")
             return False
         self._record_send_locked()
+        logger.info("通知发送成功")
         return True
 
     def _can_send_locked(self) -> bool:
