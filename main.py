@@ -30,7 +30,6 @@ from utils import http
 CONFIG_FILE = "url.txt"
 REFRESH_INTERVAL_SECONDS = 0.5
 STREAM_UPDATE_INTERVAL_SECONDS = 3
-INFLATE_DURATION_SECONDS = 10
 INFLATE_ENDPOINT = "/control?pin=D1&duration=500"
 
 
@@ -40,6 +39,7 @@ class AppState:
 
     camera_base_url: str = ""
     inflator_host: str = ""
+    inflate_duration_seconds: int = 10
 
     @property
     def camera_capture_url(self) -> str:
@@ -70,7 +70,7 @@ class AppState:
         state = cls()
         try:
             with open(path, "r", encoding="utf-8") as file:
-                lines = [line.strip() for line in file.readlines() if line.strip()]
+                lines = [line.strip() for line in file.read().splitlines() if line.strip()]
         except FileNotFoundError:
             return state
 
@@ -78,11 +78,20 @@ class AppState:
             state.update_camera_host(lines[0])
         if len(lines) > 1:
             state.update_inflator_host(lines[1])
+        if len(lines) > 2:
+            try:
+                state.inflate_duration_seconds = max(1, int(lines[2]))
+            except ValueError:
+                state.inflate_duration_seconds = 10
         return state
 
     def persist(self, path: str) -> None:
         with open(path, "w", encoding="utf-8") as file:
-            lines = [self.camera_base_url, self.inflator_host]
+            lines = [
+                self.camera_base_url,
+                self.inflator_host,
+                str(self.inflate_duration_seconds),
+            ]
             file.write("\n".join(lines))
 
 
@@ -92,7 +101,7 @@ class BasePage(tk.Toplevel):
     def __init__(self, master: tk.Misc, state: AppState):
         super().__init__(master)
         self.state = state
-        self.resizable(False, False)
+        self.resizable(True, True)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def on_close(self) -> None:
@@ -161,7 +170,7 @@ class SecondPage(BasePage):
     def __init__(self, master: tk.Misc, state: AppState, on_return):
         super().__init__(master, state)
         self.title("实时监控")
-        self.geometry("800x600")
+        self.geometry("1024x720")
         self.on_return = on_return
         self.real_length_entry: Optional[ttk.Entry] = None
         self.canvas: Optional[tk.Canvas] = None
@@ -169,22 +178,50 @@ class SecondPage(BasePage):
         self._image_stop_event = threading.Event()
         self._latest_frame_width = 0
         self._status_var = tk.StringVar()
+        self._zoom_var = tk.DoubleVar(value=1.0)
+        self._last_frame: Optional[np.ndarray] = None
 
         self._create_widgets()
         self._start_stream()
         self._init_camera()
 
     def _create_widgets(self) -> None:
-        canvas_width = int(self.winfo_screenwidth() / 2)
-        self.canvas = tk.Canvas(self, width=canvas_width, height=300)
-        self.canvas.pack(pady=10)
+        main_frame = ttk.Frame(self)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        self.real_length_entry = ttk.Entry(self)
-        self.real_length_entry.pack(pady=5)
+        canvas_width = int(self.winfo_screenwidth() * 0.55)
+        self.canvas = tk.Canvas(main_frame, width=canvas_width, height=360, background="#1c1c1c")
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+
+        controls_frame = ttk.Frame(main_frame)
+        controls_frame.grid(row=1, column=0, sticky="ew", pady=(10, 0))
+
+        ttk.Label(controls_frame, text="缩放").grid(row=0, column=0, padx=5)
+        zoom_scale = ttk.Scale(
+            controls_frame,
+            from_=0.5,
+            to=2.0,
+            variable=self._zoom_var,
+            orient=tk.HORIZONTAL,
+            command=lambda _event=None: self._redraw_last_image(),
+        )
+        zoom_scale.grid(row=0, column=1, padx=5, sticky="ew")
+        controls_frame.columnconfigure(1, weight=1)
+
+        self.real_length_entry = ttk.Entry(controls_frame)
+        self.real_length_entry.grid(row=0, column=2, padx=10)
         self.real_length_entry.insert(0, "请输入已知长度(mm)")
 
-        ttk.Button(self, text="矫正", command=self.open_third_page).pack(pady=10)
-        ttk.Label(self, textvariable=self._status_var, foreground="red").pack(pady=5)
+        ttk.Button(controls_frame, text="矫正", command=self.open_third_page).grid(row=0, column=3, padx=10)
+
+        ttk.Label(
+            main_frame,
+            textvariable=self._status_var,
+            foreground="red",
+        ).grid(row=2, column=0, columnspan=1, pady=(8, 0), sticky="w")
+
+        main_frame.rowconfigure(0, weight=1)
+        main_frame.columnconfigure(0, weight=1)
 
     def _init_camera(self) -> None:
         if not self.state.camera_capture_url:
@@ -219,13 +256,15 @@ class SecondPage(BasePage):
                 continue
 
             self._latest_frame_width = width
+            self._last_frame = frame
             photo = self._convert_to_photo_image(frame)
             self.after(0, lambda p=photo: self._draw_image(p))
             self._image_stop_event.wait(STREAM_UPDATE_INTERVAL_SECONDS)
 
     def _convert_to_photo_image(self, frame: np.ndarray) -> ImageTk.PhotoImage:
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        canvas_width = int(self.winfo_screenwidth() / 2)
+        zoom = max(0.5, min(2.0, self._zoom_var.get()))
+        canvas_width = int(self.winfo_screenwidth() * 0.55 * zoom)
         height = int(frame_rgb.shape[0] / frame_rgb.shape[1] * canvas_width)
         resized = cv2.resize(frame_rgb, (canvas_width, height))
         image = Image.fromarray(resized)
@@ -236,7 +275,14 @@ class SecondPage(BasePage):
             return
         self.canvas.imgtk = photo  # keep reference
         self.canvas.delete("all")
+        self.canvas.config(width=photo.width(), height=photo.height())
         self.canvas.create_image(0, 0, anchor=tk.NW, image=photo)
+
+    def _redraw_last_image(self) -> None:
+        if self._last_frame is None:
+            return
+        photo = self._convert_to_photo_image(self._last_frame)
+        self._draw_image(photo)
 
     def open_third_page(self) -> None:
         if not self.real_length_entry:
@@ -314,6 +360,12 @@ class ThirdPage(BasePage):
         self.monitor_button = ttk.Button(controls_frame, text="开始监控", command=self.toggle_monitoring)
         self.monitor_button.grid(row=0, column=2, padx=5)
 
+        ttk.Label(controls_frame, text="加气时长(s)").grid(row=1, column=0, padx=5, pady=(8, 0))
+        self.inflate_duration_entry = ttk.Entry(controls_frame)
+        self.inflate_duration_entry.grid(row=1, column=1, padx=5, pady=(8, 0))
+        self.inflate_duration_entry.insert(0, str(self.state.inflate_duration_seconds))
+        ttk.Button(controls_frame, text="应用", command=self._save_inflate_duration).grid(row=1, column=2, padx=5, pady=(8, 0))
+
         inflator_frame = ttk.Frame(self)
         inflator_frame.pack(pady=10)
         ttk.Label(inflator_frame, text="加气主机地址").grid(row=0, column=0, padx=5)
@@ -339,6 +391,18 @@ class ThirdPage(BasePage):
         self.state.update_inflator_host(host)
         self.state.persist(CONFIG_FILE)
         self.status_var.set(f"已保存加气主机: {self.state.inflator_base_url}")
+
+    def _save_inflate_duration(self) -> None:
+        value = self.inflate_duration_entry.get().strip()
+        try:
+            seconds = max(1, int(value))
+        except ValueError:
+            messagebox.showerror("输入错误", "加气时长必须是数字")
+            return
+
+        self.state.inflate_duration_seconds = seconds
+        self.state.persist(CONFIG_FILE)
+        self.status_var.set(f"已保存加气时长: {seconds}s")
 
     def _update_data_loop(self) -> None:
         while not self._stop_event.is_set():
@@ -435,7 +499,7 @@ class ThirdPage(BasePage):
     def _on_inflate_success(self) -> None:
         self.status_var.set("加气成功，等待震荡稳定...")
         self.trigger_count = 0
-        self.after(INFLATE_DURATION_SECONDS * 1000, self._remove_inflate_button)
+        self.after(self.state.inflate_duration_seconds * 1000, self._remove_inflate_button)
 
     def _on_inflate_error(self, exc: Exception) -> None:
         self.status_var.set(f"加气失败：{exc}")

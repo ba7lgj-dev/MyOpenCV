@@ -63,7 +63,12 @@ def _measure_white_segment(base_url: str) -> Measurement:
 
     cropped = _crop_middle_half(image)
     threshold = _threshold_image(cropped)
-    start, end = _locate_main_white_segment(threshold)
+    try:
+        start, end = _locate_main_white_segment(threshold)
+    except CameraProcessingError as exc:
+        result_img = cv2.cvtColor(threshold, cv2.COLOR_GRAY2BGR)
+        _draw_status_text(result_img, str(exc))
+        return Measurement(frame=result_img, white_length=0)
 
     result_img = cv2.cvtColor(threshold, cv2.COLOR_GRAY2BGR)
     height, _ = threshold.shape
@@ -76,7 +81,7 @@ def _measure_white_segment(base_url: str) -> Measurement:
     text = f"{white_length}px"
     text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
     text_x = (start_point[0] + end_point[0]) // 2 - text_size[0] // 2
-    text_y = height // 2 - 10
+    text_y = max(20, height // 2 - 10)
     cv2.putText(result_img, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
 
     return Measurement(frame=result_img, white_length=white_length)
@@ -117,3 +122,20 @@ def _locate_main_white_segment(threshold_img: np.ndarray) -> Tuple[int, int]:
 
     main_segment = max(segments, key=lambda x: len(x))
     return int(main_segment[0]), int(main_segment[-1])
+
+
+def _draw_status_text(image: np.ndarray, message: str) -> None:
+    height, width, _ = image.shape
+    overlay = image.copy()
+    cv2.rectangle(overlay, (0, height - 40), (width, height), (0, 0, 0), thickness=-1)
+    cv2.addWeighted(overlay, 0.6, image, 0.4, 0, dst=image)
+    cv2.putText(
+        image,
+        message,
+        (10, height - 15),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        (0, 0, 255),
+        1,
+        cv2.LINE_AA,
+    )
