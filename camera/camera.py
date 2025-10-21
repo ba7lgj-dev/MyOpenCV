@@ -69,7 +69,7 @@ def _measure_white_segment(base_url: str, line_position_ratio: float | None) -> 
     height, width = threshold.shape
     line_row = _resolve_line_row(height, line_position_ratio)
     try:
-        start, end = _locate_main_white_segment(threshold, line_row)
+        start, end, detected_row = _locate_main_white_segment(threshold, line_row)
     except CameraProcessingError as exc:
         result_img = cv2.cvtColor(threshold, cv2.COLOR_GRAY2BGR)
         cv2.line(result_img, (0, line_row), (width - 1, line_row), (0, 255, 0), 1)
@@ -77,6 +77,7 @@ def _measure_white_segment(base_url: str, line_position_ratio: float | None) -> 
         return Measurement(frame=result_img, white_length=0)
 
     result_img = cv2.cvtColor(threshold, cv2.COLOR_GRAY2BGR)
+    line_row = detected_row
     cv2.line(result_img, (0, line_row), (width - 1, line_row), (0, 255, 0), 1)
     start_point = (start, line_row)
     end_point = (end, line_row)
@@ -122,28 +123,40 @@ def _resolve_line_row(height: int, line_position_ratio: float | None) -> int:
     return int(round(ratio * (height - 1)))
 
 
-def _locate_main_white_segment(threshold_img: np.ndarray, line_row: int) -> Tuple[int, int]:
+def _locate_main_white_segment(threshold_img: np.ndarray, line_row: int) -> Tuple[int, int, int]:
     height, width = threshold_img.shape
     if height == 0:
         raise CameraProcessingError("图像高度异常")
-    line_row = max(0, min(height - 1, int(line_row)))
-    center_row = threshold_img[line_row, :]
-    white_pixels = np.where(center_row == 255)[0]
-    if white_pixels.size == 0:
-        raise CameraProcessingError("中间行没有检测到白色像素")
+
+    target_row = max(0, min(height - 1, int(line_row)))
+    search_offsets = [0]
+    for step in range(1, height):
+        if target_row + step < height:
+            search_offsets.append(step)
+        if target_row - step >= 0:
+            search_offsets.append(-step)
 
     margin = int(width * 0.05)
-    filtered = white_pixels[(white_pixels >= margin) & (white_pixels <= width - margin)]
-    if filtered.size == 0:
-        raise CameraProcessingError("过滤噪点后没有剩余白色像素")
+    for offset in search_offsets:
+        current_row = target_row + offset
+        row_pixels = threshold_img[current_row, :]
+        white_pixels = np.where(row_pixels == 255)[0]
+        if white_pixels.size == 0:
+            continue
 
-    changes = np.diff(filtered.astype(int)) > 1
-    segments = np.split(filtered, np.where(changes)[0] + 1)
-    if not segments:
-        raise CameraProcessingError("未检测到连续的白色区域")
+        filtered = white_pixels[(white_pixels >= margin) & (white_pixels <= width - margin)]
+        if filtered.size == 0:
+            continue
 
-    main_segment = max(segments, key=lambda x: len(x))
-    return int(main_segment[0]), int(main_segment[-1])
+        changes = np.diff(filtered.astype(int)) > 1
+        segments = np.split(filtered, np.where(changes)[0] + 1)
+        if not segments:
+            continue
+
+        main_segment = max(segments, key=lambda x: len(x))
+        return int(main_segment[0]), int(main_segment[-1]), current_row
+
+    raise CameraProcessingError("附近行未检测到合适的白色区域")
 
 
 def _draw_status_text(image: np.ndarray, message: str) -> None:
