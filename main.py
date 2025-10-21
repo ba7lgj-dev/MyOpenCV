@@ -79,9 +79,10 @@ class AppState:
 
     camera_base_url: str = ""
     inflator_host: str = ""
-    inflate_duration_seconds: float = 10.0
-    post_inflate_wait_seconds: int = 5
+    inflate_duration_ms: int = 1000
+    post_inflate_wait_ms: int = 5000
     detection_line_ratio: float = 0.6
+    pixel_alert_threshold: int = 150
 
     @property
     def camera_capture_url(self) -> str:
@@ -122,17 +123,19 @@ class AppState:
             state.update_inflator_host(lines[1].strip())
         if len(lines) > 2:
             if not state.update_inflate_duration(lines[2].strip()):
-                state.inflate_duration_seconds = 10.0
+                state.inflate_duration_ms = 1000
         if len(lines) > 3:
             try:
-                state.post_inflate_wait_seconds = max(0, int(float(lines[3].strip())))
+                state.update_post_inflate_wait(lines[3].strip())
             except ValueError:
-                state.post_inflate_wait_seconds = 5
+                state.post_inflate_wait_ms = 5000
         if len(lines) > 4:
             try:
                 state.update_detection_line_ratio(float(lines[4].strip()))
             except ValueError:
                 state.detection_line_ratio = 0.6
+        if len(lines) > 5:
+            state.update_pixel_alert_threshold(lines[5].strip())
         return state
 
     def persist(self, path: str) -> None:
@@ -140,9 +143,10 @@ class AppState:
             lines = [
                 self.camera_base_url,
                 self.inflator_host,
-                str(self.inflate_duration_seconds),
-                str(self.post_inflate_wait_seconds),
+                str(self.inflate_duration_ms),
+                str(self.post_inflate_wait_ms),
                 f"{self.detection_line_ratio:.3f}",
+                str(self.pixel_alert_threshold),
             ]
             file.write("\n".join(lines) + "\n")
 
@@ -154,25 +158,53 @@ class AppState:
         value = max(0.0, min(1.0, value))
         self.detection_line_ratio = value
 
-    def update_post_inflate_wait(self, seconds: int) -> None:
+    def update_post_inflate_wait(self, milliseconds: int | float) -> None:
         try:
-            value = int(seconds)
+            value = float(milliseconds)
         except (TypeError, ValueError):  # noqa: PERF203 - user input validation
-            value = self.post_inflate_wait_seconds
-        self.post_inflate_wait_seconds = max(0, value)
+            value = float(self.post_inflate_wait_ms)
 
-    def update_inflate_duration(self, seconds: float) -> bool:
-        """Update inflation duration ensuring a positive float value."""
+        if value <= 0:
+            self.post_inflate_wait_ms = 0
+            return
+
+        if value <= 600:  # backwards compatibility for legacy seconds config
+            value *= 1000
+
+        self.post_inflate_wait_ms = int(round(value))
+
+    def update_inflate_duration(self, milliseconds: float) -> bool:
+        """Update inflation duration ensuring a positive millisecond value.
+
+        Legacy configuration files stored the duration in seconds.  When the
+        provided value looks like a small number we assume it is seconds and
+        convert it automatically.
+        """
 
         try:
-            value = float(seconds)
+            value = float(milliseconds)
         except (TypeError, ValueError):
             return False
 
         if value <= 0:
             return False
 
-        self.inflate_duration_seconds = value
+        if value <= 120:  # assume legacy seconds input
+            value *= 1000
+
+        self.inflate_duration_ms = int(round(value))
+        return True
+
+    def update_pixel_alert_threshold(self, threshold: int | float) -> bool:
+        try:
+            value = int(float(threshold))
+        except (TypeError, ValueError):
+            return False
+
+        if value <= 0:
+            return False
+
+        self.pixel_alert_threshold = value
         return True
 
 
@@ -496,6 +528,7 @@ class ThirdPage(BasePage):
         self.rate = rate
         self.on_return = on_return
 
+        self.pixel_var = tk.StringVar(value="-- px")
         self.measurement_var = tk.StringVar(value="-- mm")
         self.status_var = tk.StringVar(value="")
         self.threshold: Optional[float] = None
@@ -503,44 +536,76 @@ class ThirdPage(BasePage):
         self.trigger_count = 0
         self.inflate_button: Optional[tk.Button] = None
         self.post_wait_entry: Optional[ttk.Entry] = None
+        self.pixel_threshold_entry: Optional[ttk.Entry] = None
         self._stop_event = threading.Event()
         self._monitor_thread = threading.Thread(target=self._update_data_loop, daemon=True)
         self._width_alert_active = False
+        self._pixel_alert_active = False
 
         self._create_widgets()
         self._monitor_thread.start()
         self._load_inflator_host()
 
     def _create_widgets(self) -> None:
-        ttk.Label(self, textvariable=self.measurement_var, font=("Arial", 48)).pack(pady=20)
+        measurement_frame = ttk.Frame(self)
+        measurement_frame.pack(pady=20, fill=tk.X)
+        measurement_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(measurement_frame, text="当前像素值:").grid(row=0, column=0, padx=5, sticky=tk.E)
+        ttk.Label(
+            measurement_frame,
+            textvariable=self.pixel_var,
+            font=("Arial", 32, "bold"),
+        ).grid(row=0, column=1, padx=5, sticky=tk.W)
+
+        ttk.Label(measurement_frame, text="预计宽度:").grid(row=1, column=0, padx=5, sticky=tk.E)
+        ttk.Label(
+            measurement_frame,
+            textvariable=self.measurement_var,
+            font=("Arial", 32, "bold"),
+        ).grid(row=1, column=1, padx=5, sticky=tk.W)
 
         ttk.Label(self, textvariable=self.status_var, foreground="red").pack()
 
         controls_frame = ttk.Frame(self)
-        controls_frame.pack(pady=10)
+        controls_frame.pack(pady=10, fill=tk.X)
         controls_frame.columnconfigure(1, weight=1)
 
-        ttk.Label(controls_frame, text="报警阈值(mm)").grid(row=0, column=0, padx=5)
+        ttk.Label(controls_frame, text="宽度报警阈值(mm)").grid(row=0, column=0, padx=5)
         self.threshold_entry = ttk.Entry(controls_frame)
         self.threshold_entry.grid(row=0, column=1, padx=5)
 
         self.monitor_button = ttk.Button(controls_frame, text="开始监控", command=self.toggle_monitoring)
         self.monitor_button.grid(row=0, column=2, padx=5)
 
-        ttk.Label(controls_frame, text="加气时长(s)").grid(row=1, column=0, padx=5, pady=(8, 0))
-        self.inflate_duration_entry = ttk.Entry(controls_frame)
-        self.inflate_duration_entry.grid(row=1, column=1, padx=5, pady=(8, 0))
-        self.inflate_duration_entry.insert(
-            0, self._format_seconds(self.state.inflate_duration_seconds)
+        ttk.Label(controls_frame, text="像素报警阈值(px)").grid(row=1, column=0, padx=5, pady=(8, 0))
+        self.pixel_threshold_entry = ttk.Entry(controls_frame)
+        self.pixel_threshold_entry.grid(row=1, column=1, padx=5, pady=(8, 0))
+        self.pixel_threshold_entry.insert(0, str(self.state.pixel_alert_threshold))
+        ttk.Button(controls_frame, text="应用", command=self._save_pixel_threshold).grid(
+            row=1,
+            column=2,
+            padx=5,
+            pady=(8, 0),
         )
-        ttk.Button(controls_frame, text="应用", command=self._save_inflate_duration).grid(row=1, column=2, padx=5, pady=(8, 0))
 
-        ttk.Label(controls_frame, text="等待时长(s)").grid(row=2, column=0, padx=5, pady=(8, 0))
-        self.post_wait_entry = ttk.Entry(controls_frame)
-        self.post_wait_entry.grid(row=2, column=1, padx=5, pady=(8, 0))
-        self.post_wait_entry.insert(0, str(self.state.post_inflate_wait_seconds))
-        ttk.Button(controls_frame, text="应用", command=self._save_post_inflate_wait).grid(
+        ttk.Label(controls_frame, text="加气时长(ms)").grid(row=2, column=0, padx=5, pady=(8, 0))
+        self.inflate_duration_entry = ttk.Entry(controls_frame)
+        self.inflate_duration_entry.grid(row=2, column=1, padx=5, pady=(8, 0))
+        self.inflate_duration_entry.insert(0, str(self.state.inflate_duration_ms))
+        ttk.Button(controls_frame, text="应用", command=self._save_inflate_duration).grid(
             row=2,
+            column=2,
+            padx=5,
+            pady=(8, 0),
+        )
+
+        ttk.Label(controls_frame, text="等待时长(ms)").grid(row=3, column=0, padx=5, pady=(8, 0))
+        self.post_wait_entry = ttk.Entry(controls_frame)
+        self.post_wait_entry.grid(row=3, column=1, padx=5, pady=(8, 0))
+        self.post_wait_entry.insert(0, str(self.state.post_inflate_wait_ms))
+        ttk.Button(controls_frame, text="应用", command=self._save_post_inflate_wait).grid(
+            row=3,
             column=2,
             padx=5,
             pady=(8, 0),
@@ -572,33 +637,47 @@ class ThirdPage(BasePage):
         self.state.persist(CONFIG_FILE)
         self.status_var.set(f"已保存加气主机: {self.state.inflator_base_url}")
 
+    def _save_pixel_threshold(self) -> None:
+        if not self.pixel_threshold_entry:
+            return
+
+        value = self.pixel_threshold_entry.get().strip()
+        if not self.state.update_pixel_alert_threshold(value):
+            messagebox.showerror("输入错误", "像素阈值必须是正整数")
+            return
+
+        self.pixel_threshold_entry.delete(0, tk.END)
+        self.pixel_threshold_entry.insert(0, str(self.state.pixel_alert_threshold))
+        self.state.persist(CONFIG_FILE)
+        self.status_var.set(f"已保存像素报警阈值: {self.state.pixel_alert_threshold}px")
+
     def _save_inflate_duration(self) -> None:
         value = self.inflate_duration_entry.get().strip()
         if not self.state.update_inflate_duration(value):
             messagebox.showerror("输入错误", "加气时长必须是正数")
             return
 
-        formatted = self._format_seconds(self.state.inflate_duration_seconds)
+        formatted = str(self.state.inflate_duration_ms)
         self.inflate_duration_entry.delete(0, tk.END)
         self.inflate_duration_entry.insert(0, formatted)
         self.state.persist(CONFIG_FILE)
-        self.status_var.set(f"已保存加气时长: {formatted}s")
+        self.status_var.set(f"已保存加气时长: {formatted}ms")
 
     def _save_post_inflate_wait(self) -> None:
         if not self.post_wait_entry:
             return
         value = self.post_wait_entry.get().strip()
         try:
-            seconds = max(0, int(value))
+            wait_value = float(value)
         except ValueError:
             messagebox.showerror("输入错误", "等待时长必须是数字")
             return
 
-        self.state.update_post_inflate_wait(seconds)
+        self.state.update_post_inflate_wait(wait_value)
         self.state.persist(CONFIG_FILE)
         self.post_wait_entry.delete(0, tk.END)
-        self.post_wait_entry.insert(0, str(self.state.post_inflate_wait_seconds))
-        self.status_var.set(f"已保存等待时长: {self.state.post_inflate_wait_seconds}s")
+        self.post_wait_entry.insert(0, str(self.state.post_inflate_wait_ms))
+        self.status_var.set(f"已保存等待时长: {self.state.post_inflate_wait_ms}ms")
 
     def _update_data_loop(self) -> None:
         while not self._stop_event.is_set():
@@ -633,11 +712,6 @@ class ThirdPage(BasePage):
                 self._stop_event.wait(REFRESH_INTERVAL_SECONDS)
                 continue
 
-            if length_px == 0:
-                self.after(0, lambda: self.status_var.set("未检测到白色区域"))
-                self._stop_event.wait(REFRESH_INTERVAL_SECONDS)
-                continue
-
             length_mm = length_px * self.rate
             notifier.notify_recovery("camera_processing", OPERATIONS_WEBHOOK, "图像采集恢复正常")
             notifier.notify_recovery("monitoring_unknown", OPERATIONS_WEBHOOK, "监控异常已恢复")
@@ -645,6 +719,16 @@ class ThirdPage(BasePage):
             self._stop_event.wait(REFRESH_INTERVAL_SECONDS)
 
     def _handle_measurement(self, length_mm: float, length_px: int) -> None:
+        if length_px <= 0:
+            self._activate_pixel_alert(length_px, "未检测到白色区域")
+            return
+
+        if length_px < self.state.pixel_alert_threshold:
+            self._activate_pixel_alert(length_px)
+            return
+
+        self._resolve_pixel_alert()
+        self.pixel_var.set(f"{length_px} px")
         self.measurement_var.set(f"{length_mm:.2f} mm")
         self.status_var.set("")
 
@@ -667,6 +751,34 @@ class ThirdPage(BasePage):
                 notifier.notify_recovery("width_low", ALERT_WEBHOOK, "宽度恢复正常")
             self._width_alert_active = False
             self.trigger_count = 0
+
+    def _activate_pixel_alert(self, length_px: int, message: str | None = None) -> None:
+        self.pixel_var.set("-- px")
+        self.measurement_var.set("-- mm")
+        if message is None:
+            message = (
+                f"像素值异常：{length_px}px (< {self.state.pixel_alert_threshold}px)"
+            )
+        self.status_var.set(message)
+
+        if not self._pixel_alert_active:
+            notifier.notify_error(
+                "pixel_low",
+                ALERT_WEBHOOK,
+                f"像素值异常：{length_px}px",
+                escalate_after=2,
+            )
+        self._pixel_alert_active = True
+
+        if self._width_alert_active:
+            notifier.notify_recovery("width_low", ALERT_WEBHOOK, "宽度恢复正常")
+        self._width_alert_active = False
+        self.trigger_count = 0
+
+    def _resolve_pixel_alert(self) -> None:
+        if self._pixel_alert_active:
+            notifier.notify_recovery("pixel_low", ALERT_WEBHOOK, "像素值恢复正常")
+        self._pixel_alert_active = False
 
     def _trigger_inflate(self, length_mm: float) -> None:
         if not self.inflate_button:
@@ -704,9 +816,7 @@ class ThirdPage(BasePage):
         self.inflate_button.config(state=tk.DISABLED, text="等待中...")
 
         def request_inflate() -> None:
-            duration_ms = max(
-                1, int(round(self.state.inflate_duration_seconds * 1000))
-            )
+            duration_ms = max(1, int(self.state.inflate_duration_ms))
             endpoint = f"/control?pin=D1&duration={duration_ms}"
             url = f"{base_url}{endpoint}"
             try:
@@ -721,15 +831,15 @@ class ThirdPage(BasePage):
         threading.Thread(target=request_inflate, daemon=True).start()
 
     def _on_inflate_success(self) -> None:
-        wait_seconds = self.state.post_inflate_wait_seconds
-        if wait_seconds > 0:
-            self.status_var.set(f"加气成功，等待震荡稳定...({wait_seconds}s)")
+        wait_ms = max(0, int(self.state.post_inflate_wait_ms))
+        if wait_ms > 0:
+            self.status_var.set(f"加气成功，等待震荡稳定...({wait_ms}ms)")
         else:
             self.status_var.set("加气成功")
         self.trigger_count = 0
         self._width_alert_active = False
         notifier.notify_recovery("inflate_request", OPERATIONS_WEBHOOK, "加气控制恢复正常")
-        self.after(max(0, wait_seconds) * 1000, self._remove_inflate_button)
+        self.after(wait_ms, self._remove_inflate_button)
 
     def _on_inflate_error(self, exc: Exception) -> None:
         message = str(exc)
