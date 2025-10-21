@@ -11,6 +11,7 @@ threads.
 from __future__ import annotations
 
 import dataclasses
+import logging
 import sys
 import threading
 import time
@@ -26,7 +27,12 @@ from PIL import Image, ImageTk
 
 import camera.camera
 from camera.camera import CameraProcessingError, getImage
+from utils.logging_utils import setup_logging
 from utils.notifications import ALERT_WEBHOOK, OPERATIONS_WEBHOOK, notifier
+
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 def _fetch_image(
@@ -53,9 +59,13 @@ def _install_exception_hook() -> None:
     if _EXCEPTION_HOOK_INSTALLED:
         return
 
+    logger.debug("Installing global exception hook")
     original_hook = sys.excepthook
 
     def handle_exception(exc_type, exc_value, exc_traceback) -> None:  # noqa: ANN001 - signature defined by sys.excepthook
+        logger.error(
+            "未捕获异常", exc_info=(exc_type, exc_value, exc_traceback)
+        )
         notifier.notify_error(
             "system_exception",
             OPERATIONS_WEBHOOK,
@@ -66,6 +76,7 @@ def _install_exception_hook() -> None:
 
     sys.excepthook = handle_exception
     _EXCEPTION_HOOK_INSTALLED = True
+    logger.debug("Global exception hook installed")
 
 
 CONFIG_FILE = "url.txt"
@@ -115,6 +126,7 @@ class AppState:
             with open(path, "r", encoding="utf-8") as file:
                 lines = file.read().splitlines()
         except FileNotFoundError:
+            logger.info("未找到配置文件 %s，使用默认设置", path)
             return state
 
         if lines:
@@ -136,6 +148,9 @@ class AppState:
                 state.detection_line_ratio = 0.6
         if len(lines) > 5:
             state.update_pixel_alert_threshold(lines[5].strip())
+        logger.info(
+            "从配置文件加载参数: camera=%s inflator=%s", state.camera_base_url, state.inflator_host
+        )
         return state
 
     def persist(self, path: str) -> None:
@@ -149,6 +164,7 @@ class AppState:
                 str(self.pixel_alert_threshold),
             ]
             file.write("\n".join(lines) + "\n")
+        logger.info("参数已保存到 %s", path)
 
     def update_detection_line_ratio(self, ratio: float) -> None:
         try:

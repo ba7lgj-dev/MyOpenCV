@@ -7,7 +7,11 @@ import numpy as np
 import requests
 import urllib3
 
+from utils.logging_utils import get_logger
 from utils.notifications import OPERATIONS_WEBHOOK, notifier
+
+
+logger = get_logger(__name__)
 
 
 def send_wechat_work_message(webhook_url, message_content):
@@ -29,7 +33,7 @@ def send_get_request(url, params=None, headers=None):
         response.raise_for_status()  # 如果响应状态码不是200，将抛出HTTPError异常
         return response
     except requests.RequestException as e:
-        print(f"请求发生错误: {e}")
+        logger.exception("请求发生错误: %s", e)
         return None
 
 def get_image_from_url(url, max_retries=10, timeout=5):
@@ -50,12 +54,12 @@ def get_image_from_url(url, max_retries=10, timeout=5):
                     notifier.notify_recovery("camera_stream", OPERATIONS_WEBHOOK, "摄像头连接已恢复")
                     return image
                 else:
-                    print("无法解码图像数据")
+                    logger.error("无法解码图像数据")
             else:
-                print(f"请求失败，状态码：{response.status_code}")
+                logger.warning("请求失败，状态码：%s", response.status_code)
             response.close()
         except (requests.exceptions.RequestException, urllib3.exceptions.ProtocolError) as e:
-            print(f"请求出错: {e}，正在重试 {retries + 1}...")
+            logger.warning("请求出错: %s，正在重试 %d...", e, retries + 1)
             short_error = str(e)
             notifier.notify_error(
                 "camera_stream",
@@ -65,4 +69,4 @@ def get_image_from_url(url, max_retries=10, timeout=5):
             )
             retries += 1
             time.sleep(1)  # 等待1秒后重试
-    print("达到最大重试次数，请求失败。")
+    logger.error("达到最大重试次数，请求失败。")
