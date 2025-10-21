@@ -52,7 +52,7 @@ class AppState:
 
     camera_base_url: str = ""
     inflator_host: str = ""
-    inflate_duration_seconds: int = 10
+    inflate_duration_seconds: float = 10.0
     post_inflate_wait_seconds: int = 5
     detection_line_ratio: float = 0.6
 
@@ -94,10 +94,8 @@ class AppState:
         if len(lines) > 1:
             state.update_inflator_host(lines[1].strip())
         if len(lines) > 2:
-            try:
-                state.inflate_duration_seconds = max(1, int(lines[2].strip()))
-            except ValueError:
-                state.inflate_duration_seconds = 10
+            if not state.update_inflate_duration(lines[2].strip()):
+                state.inflate_duration_seconds = 10.0
         if len(lines) > 3:
             try:
                 state.post_inflate_wait_seconds = max(0, int(float(lines[3].strip())))
@@ -135,6 +133,20 @@ class AppState:
         except (TypeError, ValueError):  # noqa: PERF203 - user input validation
             value = self.post_inflate_wait_seconds
         self.post_inflate_wait_seconds = max(0, value)
+
+    def update_inflate_duration(self, seconds: float) -> bool:
+        """Update inflation duration ensuring a positive float value."""
+
+        try:
+            value = float(seconds)
+        except (TypeError, ValueError):
+            return False
+
+        if value <= 0:
+            return False
+
+        self.inflate_duration_seconds = value
+        return True
 
 
 class BasePage(tk.Toplevel):
@@ -415,7 +427,9 @@ class ThirdPage(BasePage):
         ttk.Label(controls_frame, text="加气时长(s)").grid(row=1, column=0, padx=5, pady=(8, 0))
         self.inflate_duration_entry = ttk.Entry(controls_frame)
         self.inflate_duration_entry.grid(row=1, column=1, padx=5, pady=(8, 0))
-        self.inflate_duration_entry.insert(0, str(self.state.inflate_duration_seconds))
+        self.inflate_duration_entry.insert(
+            0, self._format_seconds(self.state.inflate_duration_seconds)
+        )
         ttk.Button(controls_frame, text="应用", command=self._save_inflate_duration).grid(row=1, column=2, padx=5, pady=(8, 0))
 
         ttk.Label(controls_frame, text="等待时长(s)").grid(row=2, column=0, padx=5, pady=(8, 0))
@@ -480,15 +494,15 @@ class ThirdPage(BasePage):
 
     def _save_inflate_duration(self) -> None:
         value = self.inflate_duration_entry.get().strip()
-        try:
-            seconds = max(1, int(value))
-        except ValueError:
-            messagebox.showerror("输入错误", "加气时长必须是数字")
+        if not self.state.update_inflate_duration(value):
+            messagebox.showerror("输入错误", "加气时长必须是正数")
             return
 
-        self.state.inflate_duration_seconds = seconds
+        formatted = self._format_seconds(self.state.inflate_duration_seconds)
+        self.inflate_duration_entry.delete(0, tk.END)
+        self.inflate_duration_entry.insert(0, formatted)
         self.state.persist(CONFIG_FILE)
-        self.status_var.set(f"已保存加气时长: {seconds}s")
+        self.status_var.set(f"已保存加气时长: {formatted}s")
 
     def _save_post_inflate_wait(self) -> None:
         if not self.post_wait_entry:
@@ -505,6 +519,11 @@ class ThirdPage(BasePage):
         self.post_wait_entry.delete(0, tk.END)
         self.post_wait_entry.insert(0, str(self.state.post_inflate_wait_seconds))
         self.status_var.set(f"已保存等待时长: {self.state.post_inflate_wait_seconds}s")
+
+    @staticmethod
+    def _format_seconds(seconds: float) -> str:
+        text = f"{seconds:.3f}"
+        return text.rstrip("0").rstrip(".")
 
     def _update_line_position_label(self) -> None:
         if not self.line_position_value or not self.line_position_var:
@@ -604,7 +623,9 @@ class ThirdPage(BasePage):
         self.inflate_button.config(state=tk.DISABLED, text="等待中...")
 
         def request_inflate() -> None:
-            duration_ms = max(1, self.state.inflate_duration_seconds) * 1000
+            duration_ms = max(
+                1, int(round(self.state.inflate_duration_seconds * 1000))
+            )
             endpoint = f"/control?pin=D1&duration={duration_ms}"
             url = f"{base_url}{endpoint}"
             try:
