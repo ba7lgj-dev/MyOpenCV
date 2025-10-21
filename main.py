@@ -39,6 +39,8 @@ class AppState:
     camera_base_url: str = ""
     inflator_host: str = ""
     inflate_duration_seconds: int = 10
+    post_inflate_wait_seconds: int = 5
+    detection_line_ratio: float = 0.6
 
     @property
     def camera_capture_url(self) -> str:
@@ -82,6 +84,16 @@ class AppState:
                 state.inflate_duration_seconds = max(1, int(lines[2].strip()))
             except ValueError:
                 state.inflate_duration_seconds = 10
+        if len(lines) > 3:
+            try:
+                state.post_inflate_wait_seconds = max(0, int(float(lines[3].strip())))
+            except ValueError:
+                state.post_inflate_wait_seconds = 5
+        if len(lines) > 4:
+            try:
+                state.update_detection_line_ratio(float(lines[4].strip()))
+            except ValueError:
+                state.detection_line_ratio = 0.6
         return state
 
     def persist(self, path: str) -> None:
@@ -90,8 +102,25 @@ class AppState:
                 self.camera_base_url,
                 self.inflator_host,
                 str(self.inflate_duration_seconds),
+                str(self.post_inflate_wait_seconds),
+                f"{self.detection_line_ratio:.3f}",
             ]
             file.write("\n".join(lines) + "\n")
+
+    def update_detection_line_ratio(self, ratio: float) -> None:
+        try:
+            value = float(ratio)
+        except (TypeError, ValueError):  # noqa: PERF203 - narrow conversion handling
+            value = 0.6
+        value = max(0.0, min(1.0, value))
+        self.detection_line_ratio = value
+
+    def update_post_inflate_wait(self, seconds: int) -> None:
+        try:
+            value = int(seconds)
+        except (TypeError, ValueError):  # noqa: PERF203 - user input validation
+            value = self.post_inflate_wait_seconds
+        self.post_inflate_wait_seconds = max(0, value)
 
 
 class BasePage(tk.Toplevel):
@@ -244,7 +273,10 @@ class SecondPage(BasePage):
                 continue
 
             try:
-                frame, width = getImage(self.state.camera_capture_url)
+                frame, width = getImage(
+                    self.state.camera_capture_url,
+                    line_position_ratio=self.state.detection_line_ratio,
+                )
             except CameraProcessingError as exc:
                 self.after(0, lambda e=exc: self._status_var.set(f"请调整图像参数: {e}"))
                 self._image_stop_event.wait(STREAM_UPDATE_INTERVAL_SECONDS)
@@ -293,7 +325,10 @@ class SecondPage(BasePage):
             return
 
         try:
-            _, pixel_length = getImage(self.state.camera_capture_url)
+            _, pixel_length = getImage(
+                self.state.camera_capture_url,
+                line_position_ratio=self.state.detection_line_ratio,
+            )
         except CameraProcessingError as exc:
             messagebox.showerror("测量失败", f"无法获取图像: {exc}")
             return
@@ -337,6 +372,9 @@ class ThirdPage(BasePage):
         self.is_monitoring = False
         self.trigger_count = 0
         self.inflate_button: Optional[tk.Button] = None
+        self.post_wait_entry: Optional[ttk.Entry] = None
+        self.line_position_var: Optional[tk.DoubleVar] = None
+        self.line_position_value: Optional[ttk.Label] = None
         self._stop_event = threading.Event()
         self._monitor_thread = threading.Thread(target=self._update_data_loop, daemon=True)
 
@@ -351,6 +389,7 @@ class ThirdPage(BasePage):
 
         controls_frame = ttk.Frame(self)
         controls_frame.pack(pady=10)
+        controls_frame.columnconfigure(1, weight=1)
 
         ttk.Label(controls_frame, text="报警阈值(mm)").grid(row=0, column=0, padx=5)
         self.threshold_entry = ttk.Entry(controls_frame)
@@ -364,6 +403,40 @@ class ThirdPage(BasePage):
         self.inflate_duration_entry.grid(row=1, column=1, padx=5, pady=(8, 0))
         self.inflate_duration_entry.insert(0, str(self.state.inflate_duration_seconds))
         ttk.Button(controls_frame, text="应用", command=self._save_inflate_duration).grid(row=1, column=2, padx=5, pady=(8, 0))
+
+        ttk.Label(controls_frame, text="等待时长(s)").grid(row=2, column=0, padx=5, pady=(8, 0))
+        self.post_wait_entry = ttk.Entry(controls_frame)
+        self.post_wait_entry.grid(row=2, column=1, padx=5, pady=(8, 0))
+        self.post_wait_entry.insert(0, str(self.state.post_inflate_wait_seconds))
+        ttk.Button(controls_frame, text="应用", command=self._save_post_inflate_wait).grid(
+            row=2,
+            column=2,
+            padx=5,
+            pady=(8, 0),
+        )
+
+        ttk.Label(controls_frame, text="检测线位置(%)").grid(row=3, column=0, padx=5, pady=(8, 0))
+        self.line_position_var = tk.DoubleVar(value=self.state.detection_line_ratio * 100)
+        self.line_position_scale = ttk.Scale(
+            controls_frame,
+            from_=10,
+            to=90,
+            variable=self.line_position_var,
+            command=lambda _event=None: self._update_line_position_label(),
+        )
+        self.line_position_scale.grid(row=3, column=1, padx=5, pady=(8, 0), sticky="ew")
+        self.line_position_value = ttk.Label(
+            controls_frame,
+            text=f"{self.line_position_var.get():.0f}%",
+        )
+        self.line_position_value.grid(row=3, column=2, padx=5, pady=(8, 0))
+        ttk.Button(controls_frame, text="应用", command=self._save_detection_line).grid(
+            row=3,
+            column=3,
+            padx=5,
+            pady=(8, 0),
+        )
+        self._update_line_position_label()
 
         inflator_frame = ttk.Frame(self)
         inflator_frame.pack(pady=10)
@@ -403,6 +476,37 @@ class ThirdPage(BasePage):
         self.state.persist(CONFIG_FILE)
         self.status_var.set(f"已保存加气时长: {seconds}s")
 
+    def _save_post_inflate_wait(self) -> None:
+        if not self.post_wait_entry:
+            return
+        value = self.post_wait_entry.get().strip()
+        try:
+            seconds = max(0, int(value))
+        except ValueError:
+            messagebox.showerror("输入错误", "等待时长必须是数字")
+            return
+
+        self.state.update_post_inflate_wait(seconds)
+        self.state.persist(CONFIG_FILE)
+        self.post_wait_entry.delete(0, tk.END)
+        self.post_wait_entry.insert(0, str(self.state.post_inflate_wait_seconds))
+        self.status_var.set(f"已保存等待时长: {self.state.post_inflate_wait_seconds}s")
+
+    def _update_line_position_label(self) -> None:
+        if not self.line_position_value or not self.line_position_var:
+            return
+        self.line_position_value.config(text=f"{self.line_position_var.get():.0f}%")
+
+    def _save_detection_line(self) -> None:
+        if not self.line_position_var:
+            return
+        ratio = self.line_position_var.get() / 100.0
+        self.state.update_detection_line_ratio(ratio)
+        self.state.persist(CONFIG_FILE)
+        self.line_position_var.set(self.state.detection_line_ratio * 100)
+        self._update_line_position_label()
+        self.status_var.set(f"已保存检测线位置: {self.line_position_var.get():.0f}%")
+
     def _update_data_loop(self) -> None:
         while not self._stop_event.is_set():
             if not self.state.camera_capture_url:
@@ -411,7 +515,10 @@ class ThirdPage(BasePage):
                 continue
 
             try:
-                _, length_px = getImage(self.state.camera_capture_url)
+                _, length_px = getImage(
+                    self.state.camera_capture_url,
+                    line_position_ratio=self.state.detection_line_ratio,
+                )
             except CameraProcessingError as exc:
                 self.after(0, lambda e=exc: self.status_var.set(f"图像采集失败: {e}"))
                 self._stop_event.wait(REFRESH_INTERVAL_SECONDS)
@@ -498,9 +605,13 @@ class ThirdPage(BasePage):
         threading.Thread(target=request_inflate, daemon=True).start()
 
     def _on_inflate_success(self) -> None:
-        self.status_var.set("加气成功，等待震荡稳定...")
+        wait_seconds = self.state.post_inflate_wait_seconds
+        if wait_seconds > 0:
+            self.status_var.set(f"加气成功，等待震荡稳定...({wait_seconds}s)")
+        else:
+            self.status_var.set("加气成功")
         self.trigger_count = 0
-        self.after(self.state.inflate_duration_seconds * 1000, self._remove_inflate_button)
+        self.after(max(0, wait_seconds) * 1000, self._remove_inflate_button)
 
     def _on_inflate_error(self, exc: Exception) -> None:
         self.status_var.set(f"加气失败：{exc}")

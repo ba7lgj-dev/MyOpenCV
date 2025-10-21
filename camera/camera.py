@@ -18,6 +18,9 @@ import utils.http as http
 from utils.http import get_image_from_url
 
 
+_DEFAULT_LINE_POSITION_RATIO = 0.6
+
+
 class CameraProcessingError(RuntimeError):
     """Raised when the camera feed cannot be processed."""
 
@@ -46,14 +49,14 @@ def init(base_url: str) -> Dict[str, str]:
     return results
 
 
-def getImage(base_url: str) -> Tuple[np.ndarray, int]:
+def getImage(base_url: str, line_position_ratio: float | None = None) -> Tuple[np.ndarray, int]:
     """Fetch a frame from the camera and measure the dominant white segment."""
 
-    measurement = _measure_white_segment(base_url)
+    measurement = _measure_white_segment(base_url, line_position_ratio)
     return measurement.frame, measurement.white_length
 
 
-def _measure_white_segment(base_url: str) -> Measurement:
+def _measure_white_segment(base_url: str, line_position_ratio: float | None) -> Measurement:
     if not base_url:
         raise CameraProcessingError("缺少摄像头地址")
 
@@ -63,25 +66,27 @@ def _measure_white_segment(base_url: str) -> Measurement:
 
     cropped = _crop_middle_half(image)
     threshold = _threshold_image(cropped)
+    height, width = threshold.shape
+    line_row = _resolve_line_row(height, line_position_ratio)
     try:
-        start, end = _locate_main_white_segment(threshold)
+        start, end = _locate_main_white_segment(threshold, line_row)
     except CameraProcessingError as exc:
         result_img = cv2.cvtColor(threshold, cv2.COLOR_GRAY2BGR)
+        cv2.line(result_img, (0, line_row), (width - 1, line_row), (0, 255, 0), 1)
         _draw_status_text(result_img, str(exc))
         return Measurement(frame=result_img, white_length=0)
 
     result_img = cv2.cvtColor(threshold, cv2.COLOR_GRAY2BGR)
-    height, _ = threshold.shape
-    cv2.line(result_img, (0, height // 2), (result_img.shape[1] - 1, height // 2), (0, 255, 0), 1)
-    start_point = (start, height // 2)
-    end_point = (end, height // 2)
+    cv2.line(result_img, (0, line_row), (width - 1, line_row), (0, 255, 0), 1)
+    start_point = (start, line_row)
+    end_point = (end, line_row)
     cv2.line(result_img, start_point, end_point, (0, 0, 255), 2)
 
     white_length = end - start + 1
     text = f"{white_length}px"
     text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
     text_x = (start_point[0] + end_point[0]) // 2 - text_size[0] // 2
-    text_y = max(20, height // 2 - 10)
+    text_y = max(20, line_row - 10)
     cv2.putText(result_img, text, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
 
     return Measurement(frame=result_img, white_length=white_length)
@@ -103,9 +108,26 @@ def _threshold_image(image: np.ndarray) -> np.ndarray:
     return threshold_img
 
 
-def _locate_main_white_segment(threshold_img: np.ndarray) -> Tuple[int, int]:
+def _resolve_line_row(height: int, line_position_ratio: float | None) -> int:
+    if line_position_ratio is None:
+        ratio = _DEFAULT_LINE_POSITION_RATIO
+    else:
+        try:
+            ratio = float(line_position_ratio)
+        except (TypeError, ValueError):  # noqa: PERF203 - guard against invalid inputs
+            ratio = _DEFAULT_LINE_POSITION_RATIO
+    ratio = max(0.0, min(1.0, ratio))
+    if height <= 1:
+        return 0
+    return int(round(ratio * (height - 1)))
+
+
+def _locate_main_white_segment(threshold_img: np.ndarray, line_row: int) -> Tuple[int, int]:
     height, width = threshold_img.shape
-    center_row = threshold_img[height // 2, :]
+    if height == 0:
+        raise CameraProcessingError("图像高度异常")
+    line_row = max(0, min(height - 1, int(line_row)))
+    center_row = threshold_img[line_row, :]
     white_pixels = np.where(center_row == 255)[0]
     if white_pixels.size == 0:
         raise CameraProcessingError("中间行没有检测到白色像素")
