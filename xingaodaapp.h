@@ -2,6 +2,8 @@
 #define XINGAODAAPP_H
 
 #include <QMainWindow>
+#include <QTimer>
+#include "applicationcore.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class xingaodaApp; }
@@ -15,7 +17,23 @@ public:
     xingaodaApp(QWidget *parent = nullptr);
     ~xingaodaApp();
 
+private slots:
+    void onStart();
+    void onStop();
+    void onCalib0();
+    void onCalib1();
+    void onAutoExp0();
+    void onAutoExp1();
+    void onCameraFrame(int id, const QImage &img);
+    void onWidthUpdated(int id, const WidthResult &result);
+    void onMessage(const QString &msg);
+    void onSafety();
+
 private:
+    void setupConnections();
+    void updateWidthLabel(int id, const WidthResult &result);
+
     Ui::xingaodaApp *ui;
+    ApplicationCore core;
 };
 #endif // XINGAODAAPP_H
