@@ -1,7 +1,7 @@
 #include "pumpcontroller.h"
 #include "logmanager.h"
 #include <QDateTime>
-#include <QThread>
+#include <QTimer>
 
 Cp2102PumpController::Cp2102PumpController(QObject *parent)
     : IPumpController(parent)
@@ -39,11 +39,13 @@ void Cp2102PumpController::pulseLow(int ms)
     serial.setDataTerminalReady(false);
     serial.setRequestToSend(false);
     LogManager::instance().logInfo(tr("Auto pump triggered: pulse=%1ms").arg(ms));
-    QThread::msleep(ms);
-    serial.setDataTerminalReady(true);
-    serial.setRequestToSend(true);
-    pushEvent(ms);
-    checkSafety();
+    QTimer::singleShot(ms, this, [this, ms]() {
+        if (!serial.isOpen()) return;
+        serial.setDataTerminalReady(true);
+        serial.setRequestToSend(true);
+        pushEvent(ms);
+        checkSafety();
+    });
 }
 
 void Cp2102PumpController::forceHigh()

@@ -50,7 +50,7 @@ WidthResult MultiLineCannyWidthEstimator::estimate(const cv::Mat &frame, const C
     std::vector<double> widths;
     for (double r : ratios) {
         double clamped = std::min(1.0, std::max(0.0, r));
-        int row = static_cast<int>(clamped * edges.rows);
+        int row = std::clamp(static_cast<int>(clamped * edges.rows), 0, edges.rows - 1);
         cv::Mat edgeRow = edges.row(row);
         int left = findEdgeFromLeft(edgeRow);
         int right = findEdgeFromRight(edgeRow);
