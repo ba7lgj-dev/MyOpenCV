@@ -26,8 +26,12 @@ ApplicationCore::~ApplicationCore()
 
 void ApplicationCore::initialize()
 {
-    cam0.open(0);
-    cam1.open(1);
+    if (!cfg.load("config.json")) {
+        cfg.resetDefaults();
+        cfg.save("config.json");
+    }
+    cam0.open(cfg.camera(0).index);
+    cam1.open(cfg.camera(1).index);
     cam0.setConfig(cfg.camera(0));
     cam1.setConfig(cfg.camera(1));
 
@@ -61,6 +65,7 @@ void ApplicationCore::startCameras()
     if (!cfg.config().pumpPort.isEmpty()) {
         pump.open(cfg.config().pumpPort);
     }
+    autoPump = cfg.config().autoPumpEnabled;
 }
 
 void ApplicationCore::stopCameras()
@@ -84,6 +89,9 @@ void ApplicationCore::toggleAutoExposure(int cameraId)
 void ApplicationCore::setAutoPumpEnabled(bool enabled)
 {
     autoPump = enabled;
+    AppConfig updated = cfg.config();
+    updated.autoPumpEnabled = enabled;
+    cfg.setConfig(updated);
     emit message(enabled ? tr("Auto pump enabled") : tr("Auto pump disabled"));
 }
 

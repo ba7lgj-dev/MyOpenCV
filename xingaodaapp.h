@@ -28,12 +28,16 @@ private slots:
     void onWidthUpdated(int id, const WidthResult &result);
     void onMessage(const QString &msg);
     void onSafety();
+    void onLineChanged(int value);
+    void onResetDefaults();
 
 private:
     void setupConnections();
     void updateWidthLabel(int id, const WidthResult &result);
+    QPixmap drawOverlay(int id, const QImage &img) const;
 
     Ui::xingaodaApp *ui;
     ApplicationCore core;
+    WidthResult lastResult[2];
 };
 #endif // XINGAODAAPP_H
