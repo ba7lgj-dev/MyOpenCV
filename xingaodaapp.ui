@@ -197,29 +197,60 @@
        </layout>
       </item>
       <item row="3" column="0">
-       <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <layout class="QVBoxLayout" name="verticalLayoutLines">
         <item>
-         <widget class="QLabel" name="labelLineHeight">
-          <property name="text">
-           <string>检测线高度</string>
-          </property>
-         </widget>
+         <layout class="QHBoxLayout" name="horizontalLayoutLine0">
+          <item>
+           <widget class="QLabel" name="labelLineHeight0">
+            <property name="text">
+             <string>左摄像头检测线高度</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSlider" name="sliderLine0">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="minimum">
+             <number>0</number>
+            </property>
+            <property name="maximum">
+             <number>100</number>
+            </property>
+            <property name="value">
+             <number>50</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </item>
         <item>
-         <widget class="QSlider" name="sliderLine">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="minimum">
-           <number>0</number>
-          </property>
-          <property name="maximum">
-           <number>100</number>
-          </property>
-          <property name="value">
-           <number>50</number>
-          </property>
-         </widget>
+         <layout class="QHBoxLayout" name="horizontalLayoutLine1">
+          <item>
+           <widget class="QLabel" name="labelLineHeight1">
+            <property name="text">
+             <string>右摄像头检测线高度</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSlider" name="sliderLine1">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="minimum">
+             <number>0</number>
+            </property>
+            <property name="maximum">
+             <number>100</number>
+            </property>
+            <property name="value">
+             <number>50</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </item>
        </layout>
       </item>

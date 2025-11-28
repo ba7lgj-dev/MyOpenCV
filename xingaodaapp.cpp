@@ -20,6 +20,27 @@
 #include <QTextEdit>
 #include <QGroupBox>
 #include <QPushButton>
+#include <opencv2/videoio.hpp>
+
+namespace {
+
+QList<int> availableCameraPorts()
+{
+    QList<int> ports;
+    for (int i = 0; i < 10; ++i) {
+        cv::VideoCapture cap;
+        if (cap.open(i)) {
+            ports.append(i);
+            cap.release();
+        }
+    }
+    if (ports.isEmpty()) {
+        ports.append(0);
+    }
+    return ports;
+}
+
+}
 
 xingaodaApp::xingaodaApp(QWidget *parent)
     : QMainWindow(parent)
@@ -27,7 +48,8 @@ xingaodaApp::xingaodaApp(QWidget *parent)
 {
     ui->setupUi(this);
     ui->chartView->setChart(core.trendChart()->chart());
-    ui->sliderLine->setValue(static_cast<int>(core.config()->camera(0).lineRatio * 100));
+    ui->sliderLine0->setValue(static_cast<int>(core.config()->camera(0).lineRatio * 100));
+    ui->sliderLine1->setValue(static_cast<int>(core.config()->camera(1).lineRatio * 100));
     setupConnections();
     core.initialize();
     ui->chkAutoPump->setChecked(core.config()->config().autoPumpEnabled);
@@ -48,7 +70,8 @@ void xingaodaApp::setupConnections()
     connect(ui->btnAutoExp0, &QPushButton::clicked, this, &xingaodaApp::onAutoExp0);
     connect(ui->btnAutoExp1, &QPushButton::clicked, this, &xingaodaApp::onAutoExp1);
     connect(ui->chkAutoPump, &QCheckBox::toggled, &core, &ApplicationCore::setAutoPumpEnabled);
-    connect(ui->sliderLine, &QSlider::valueChanged, this, &xingaodaApp::onLineChanged);
+    connect(ui->sliderLine0, &QSlider::valueChanged, this, &xingaodaApp::onLine0Changed);
+    connect(ui->sliderLine1, &QSlider::valueChanged, this, &xingaodaApp::onLine1Changed);
     connect(ui->actionResetConfig, &QAction::triggered, this, &xingaodaApp::onResetDefaults);
     connect(ui->actionCamera, &QAction::triggered, this, &xingaodaApp::onCameraSettings);
     connect(ui->actionDetect, &QAction::triggered, this, &xingaodaApp::onDetectSettings);
@@ -134,14 +157,22 @@ void xingaodaApp::onSafety()
     onMessage(tr("自动加气安全模式，已关闭自动加气"));
 }
 
-void xingaodaApp::onLineChanged(int value)
+void xingaodaApp::onLine0Changed(int value)
 {
     double ratio = value / 100.0;
     AppConfig appCfg = core.config()->config();
     appCfg.cameras[0].lineRatio = ratio;
+    core.config()->setConfig(appCfg);
+    onMessage(tr("左摄像头检测线高度已调整"));
+}
+
+void xingaodaApp::onLine1Changed(int value)
+{
+    double ratio = value / 100.0;
+    AppConfig appCfg = core.config()->config();
     appCfg.cameras[1].lineRatio = ratio;
     core.config()->setConfig(appCfg);
-    onMessage(tr("检测线高度已调整"));
+    onMessage(tr("右摄像头检测线高度已调整"));
 }
 
 void xingaodaApp::onResetDefaults()
@@ -173,7 +204,8 @@ void xingaodaApp::onPushSettings()
 
 void xingaodaApp::onConfigReloaded()
 {
-    ui->sliderLine->setValue(static_cast<int>(core.config()->camera(0).lineRatio * 100));
+    ui->sliderLine0->setValue(static_cast<int>(core.config()->camera(0).lineRatio * 100));
+    ui->sliderLine1->setValue(static_cast<int>(core.config()->camera(1).lineRatio * 100));
     ui->chkAutoPump->setChecked(core.config()->config().autoPumpEnabled);
 }
 
@@ -182,9 +214,18 @@ QWidget *xingaodaApp::buildCameraGroup(int idx, const CameraConfig &cfg, QMap<QS
     QGroupBox *box = new QGroupBox(idx == 0 ? tr("左摄像头") : tr("右摄像头"));
     QFormLayout *form = new QFormLayout(box);
 
-    QSpinBox *indexSpin = new QSpinBox(box);
-    indexSpin->setRange(0, 10);
-    indexSpin->setValue(cfg.index);
+    QComboBox *indexCombo = new QComboBox(box);
+    indexCombo->setEditable(true);
+    QList<int> ports = availableCameraPorts();
+    for (int port : ports) {
+        indexCombo->addItem(QString::number(port));
+    }
+    int portIndex = ports.indexOf(cfg.index);
+    if (portIndex >= 0) {
+        indexCombo->setCurrentIndex(portIndex);
+    } else {
+        indexCombo->setCurrentText(QString::number(cfg.index));
+    }
     QLineEdit *nameEdit = new QLineEdit(cfg.name, box);
     QComboBox *rotationCombo = new QComboBox(box);
     rotationCombo->addItems({QStringLiteral("0°"), QStringLiteral("90°"), QStringLiteral("180°"), QStringLiteral("270°")});
@@ -194,13 +235,13 @@ QWidget *xingaodaApp::buildCameraGroup(int idx, const CameraConfig &cfg, QMap<QS
     QCheckBox *flipV = new QCheckBox(tr("垂直翻转"), box);
     flipV->setChecked(cfg.flipVertical);
 
-    form->addRow(tr("摄像头序号"), indexSpin);
+    form->addRow(tr("摄像头端口号"), indexCombo);
     form->addRow(tr("名称"), nameEdit);
     form->addRow(tr("旋转"), rotationCombo);
     form->addRow(flipH);
     form->addRow(flipV);
 
-    widgets.insert(QString("cam%1.index").arg(idx), indexSpin);
+    widgets.insert(QString("cam%1.index").arg(idx), indexCombo);
     widgets.insert(QString("cam%1.name").arg(idx), nameEdit);
     widgets.insert(QString("cam%1.rotation").arg(idx), rotationCombo);
     widgets.insert(QString("cam%1.flipH").arg(idx), flipH);
@@ -267,7 +308,7 @@ void xingaodaApp::showCameraDialog()
         appCfg.dualCameraMode = dual->isChecked();
         for (int i = 0; i < 2; ++i) {
             CameraConfig cfg = appCfg.cameras[i];
-            cfg.index = qobject_cast<QSpinBox*>(widgets.value(QString("cam%1.index").arg(i)))->value();
+            cfg.index = qobject_cast<QComboBox*>(widgets.value(QString("cam%1.index").arg(i)))->currentText().toInt();
             cfg.name = qobject_cast<QLineEdit*>(widgets.value(QString("cam%1.name").arg(i)))->text();
             cfg.rotation = qobject_cast<QComboBox*>(widgets.value(QString("cam%1.rotation").arg(i)))->currentIndex() * 90;
             cfg.flipHorizontal = qobject_cast<QCheckBox*>(widgets.value(QString("cam%1.flipH").arg(i)))->isChecked();
