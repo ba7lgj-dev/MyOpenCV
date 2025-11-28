@@ -49,16 +49,58 @@
            </property>
           </widget>
          </item>
+        <item>
+         <widget class="QLabel" name="labelStatus0">
+          <property name="text">
+           <string>Status: Idle</string>
+          </property>
+         </widget>
+        </item>
          <item>
-          <widget class="QLabel" name="labelStatus0">
-           <property name="text">
-            <string>Status: Idle</string>
-           </property>
-          </widget>
+          <layout class="QHBoxLayout" name="layoutCam0Controls">
+           <item>
+            <widget class="QLabel" name="labelLine0">
+             <property name="text">
+              <string>检测线(%)</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSlider" name="sliderLine0">
+             <property name="maximum">100</property>
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="spinBand0">
+             <property name="maximum">500</property>
+             <property name="suffix">
+              <string>px</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btnColor0">
+             <property name="text">
+              <string>颜色</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboRotation0">
+             <item><property name="text"><string>0°</string></property></item>
+             <item><property name="text"><string>90°</string></property></item>
+             <item><property name="text"><string>180°</string></property></item>
+             <item><property name="text"><string>270°</string></property></item>
+            </widget>
+           </item>
+          </layout>
          </item>
-        </layout>
-       </widget>
-      </item>
+       </layout>
+      </widget>
+     </item>
       <item>
        <widget class="QGroupBox" name="groupCam1">
         <property name="title">
@@ -92,15 +134,57 @@
           </widget>
          </item>
          <item>
-          <widget class="QLabel" name="labelStatus1">
-           <property name="text">
-            <string>Status: Idle</string>
-           </property>
-          </widget>
+         <widget class="QLabel" name="labelStatus1">
+          <property name="text">
+           <string>Status: Idle</string>
+          </property>
+         </widget>
+        </item>
+         <item>
+          <layout class="QHBoxLayout" name="layoutCam1Controls">
+           <item>
+            <widget class="QLabel" name="labelLine1">
+             <property name="text">
+              <string>检测线(%)</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSlider" name="sliderLine1">
+             <property name="maximum">100</property>
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="spinBand1">
+             <property name="maximum">500</property>
+             <property name="suffix">
+              <string>px</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btnColor1">
+             <property name="text">
+              <string>颜色</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboRotation1">
+             <item><property name="text"><string>0°</string></property></item>
+             <item><property name="text"><string>90°</string></property></item>
+             <item><property name="text"><string>180°</string></property></item>
+             <item><property name="text"><string>270°</string></property></item>
+            </widget>
+           </item>
+          </layout>
          </item>
-        </layout>
-       </widget>
-      </item>
+       </layout>
+      </widget>
+     </item>
      </layout>
     </item>
     <item>
@@ -210,7 +294,20 @@
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menubar"/>
+  <widget class="QMenuBar" name="menubar">
+   <widget class="QMenu" name="menuSettings">
+    <property name="title">
+     <string>系统设置</string>
+    </property>
+    <addaction name="actionCameraManager"/>
+   </widget>
+   <addaction name="menuSettings"/>
+  </widget>
+  <action name="actionCameraManager">
+   <property name="text">
+    <string>摄像头管理</string>
+   </property>
+  </action>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <customwidgets>

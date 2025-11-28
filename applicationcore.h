@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QTimer>
+#include <QList>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
 #include "camera.h"
@@ -24,6 +25,9 @@ public:
     ConfigManager *config();
     CalibrationManager *calibration();
     QChartView *trendChart();
+    QList<int> availableCameraIndices(int maxIndex = 8) const;
+    void reloadCamerasFromConfig();
+    QString configPath() const { return defaultConfigPath; }
 
 signals:
     void cameraFrame(int id, const QImage &img);
@@ -60,6 +64,8 @@ private:
     QLineSeries *series0 {nullptr};
     QLineSeries *series1 {nullptr};
     WidthResult lastResult[2];
+    QString defaultConfigPath {"config.json"};
+    bool running {false};
 };
 
 #endif // APPLICATIONCORE_H

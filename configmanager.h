@@ -63,10 +63,13 @@ public:
     bool load(const QString &path);
     bool save(const QString &path) const;
     const AppConfig &config() const { return appConfig; }
+    QString configPath() const { return lastPath; }
     void updateMmPerPixel(int cameraId, double value);
     void setAutoPumpEnabled(bool enabled);
+    void setDualCameraMode(bool enabled);
     void restoreDefaults();
     CameraConfig camera(int idx) const;
+    void setCameraConfig(int idx, const CameraConfig &cfg);
     PushConfig pushConfig() const;
 
     static QColor colorFromJson(const QJsonValue &v, const QColor &fallback = Qt::red);
