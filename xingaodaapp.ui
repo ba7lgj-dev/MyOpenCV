@@ -196,6 +196,33 @@
         </item>
        </layout>
       </item>
+      <item row="3" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QLabel" name="labelLineHeight">
+          <property name="text">
+           <string>检测线高度</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSlider" name="sliderLine">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="minimum">
+           <number>0</number>
+          </property>
+          <property name="maximum">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>50</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
      </layout>
     </item>
     <item>
@@ -210,8 +237,53 @@
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menubar"/>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1200</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuSystem">
+    <property name="title">
+     <string>系统设置</string>
+    </property>
+    <addaction name="actionCamera"/>
+    <addaction name="actionDetect"/>
+    <addaction name="actionPump"/>
+    <addaction name="actionPush"/>
+    <addaction name="actionResetConfig"/>
+   </widget>
+   <addaction name="menuSystem"/>
+  </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionCamera">
+   <property name="text">
+    <string>摄像头管理</string>
+   </property>
+  </action>
+  <action name="actionDetect">
+   <property name="text">
+    <string>检测参数</string>
+   </property>
+  </action>
+  <action name="actionPump">
+   <property name="text">
+    <string>自动加气配置</string>
+   </property>
+  </action>
+  <action name="actionPush">
+   <property name="text">
+    <string>推送配置</string>
+   </property>
+  </action>
+  <action name="actionResetConfig">
+   <property name="text">
+    <string>恢复默认设置</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
