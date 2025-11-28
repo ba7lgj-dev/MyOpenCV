@@ -30,7 +30,8 @@ private slots:
     void onWidthUpdated(int id, const WidthResult &result);
     void onMessage(const QString &msg);
     void onSafety();
-    void onLineChanged(int value);
+    void onLine0Changed(int value);
+    void onLine1Changed(int value);
     void onResetDefaults();
     void onCameraSettings();
     void onDetectSettings();
