@@ -11,6 +11,7 @@
 #include "calibrationmanager.h"
 #include "pumpcontroller.h"
 #include "logmanager.h"
+#include "pushmanager.h"
 
 QT_CHARTS_USE_NAMESPACE
 
@@ -24,6 +25,7 @@ public:
     ConfigManager *config();
     CalibrationManager *calibration();
     QChartView *trendChart();
+    void restoreDefaults();
 
 signals:
     void cameraFrame(int id, const QImage &img);
@@ -37,6 +39,7 @@ public slots:
     void calibrateWidth(int cameraId, double realMM);
     void toggleAutoExposure(int cameraId);
     void setAutoPumpEnabled(bool enabled);
+    void sendTestPush(const QString &text);
 
 private slots:
     void onFrame0(const cv::Mat &frame);
@@ -60,6 +63,7 @@ private:
     QLineSeries *series0 {nullptr};
     QLineSeries *series1 {nullptr};
     WidthResult lastResult[2];
+    WechatPushManager push{&cfg};
 };
 
 #endif // APPLICATIONCORE_H

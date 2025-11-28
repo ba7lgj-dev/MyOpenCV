@@ -4,6 +4,7 @@
 ApplicationCore::ApplicationCore(QObject *parent)
     : QObject(parent)
 {
+    cfg.load("config.json");
     estimator = new MultiLineCannyWidthEstimator();
     series0 = new QLineSeries();
     series1 = new QLineSeries();
@@ -22,15 +23,17 @@ ApplicationCore::~ApplicationCore()
 {
     delete estimator;
     delete chartView;
+    push.notifyShutdown();
 }
 
 void ApplicationCore::initialize()
 {
-    cam0.open(0);
-    cam1.open(1);
+    const AppConfig &conf = cfg.config();
+    cam0.open(conf.cameras[0].index);
+    cam1.open(conf.cameras[1].index);
     cam0.setConfig(cfg.camera(0));
     cam1.setConfig(cfg.camera(1));
-    autoPump = cfg.config().autoPumpEnabled;
+    autoPump = conf.autoPumpEnabled;
 
     connect(&cam0, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame0);
     connect(&cam1, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame1);
@@ -38,6 +41,8 @@ void ApplicationCore::initialize()
     connect(&cam1, &UsbCamera::frameReady, [this](const QImage &img){ emit cameraFrame(1, img);});
     connect(&cam0, &UsbCamera::cameraError, this, [this](const QString &msg){ emit message(msg); LogManager::instance().logWarn(msg);});
     connect(&cam1, &UsbCamera::cameraError, this, [this](const QString &msg){ emit message(msg); LogManager::instance().logWarn(msg);});
+
+    push.notifyStartup();
 }
 
 ConfigManager *ApplicationCore::config()
@@ -53,6 +58,13 @@ CalibrationManager *ApplicationCore::calibration()
 QChartView *ApplicationCore::trendChart()
 {
     return chartView;
+}
+
+void ApplicationCore::restoreDefaults()
+{
+    cfg.restoreDefaults();
+    cfg.save("config.json");
+    emit message(tr("已恢复出厂设置"));
 }
 
 void ApplicationCore::startCameras()
@@ -87,6 +99,11 @@ void ApplicationCore::setAutoPumpEnabled(bool enabled)
     autoPump = enabled;
     cfg.setAutoPumpEnabled(enabled);
     emit message(enabled ? tr("Auto pump enabled") : tr("Auto pump disabled"));
+}
+
+void ApplicationCore::sendTestPush(const QString &text)
+{
+    push.sendTestMessage(text);
 }
 
 void ApplicationCore::onFrame0(const cv::Mat &frame)
