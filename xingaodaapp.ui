@@ -255,34 +255,34 @@
    <addaction name="menuPush"/>
    <addaction name="menuDefaults"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
- </widget>
- <action name="actionCameraSettings">
-  <property name="text">
-   <string>摄像头设置</string>
-  </property>
- </action>
- <action name="actionDetectionSettings">
-  <property name="text">
-   <string>检测线设置</string>
-  </property>
- </action>
- <action name="actionPumpSettings">
-  <property name="text">
-   <string>自动加气设置</string>
-  </property>
- </action>
- <action name="actionPushSettings">
-  <property name="text">
-   <string>推送设置</string>
-  </property>
- </action>
- <action name="actionRestoreDefaults">
-  <property name="text">
-   <string>恢复出厂配置</string>
-  </property>
- </action>
- <customwidgets>
+    <widget class="QStatusBar" name="statusbar"/>
+    <action name="actionCameraSettings">
+     <property name="text">
+      <string>摄像头设置</string>
+     </property>
+    </action>
+    <action name="actionDetectionSettings">
+     <property name="text">
+      <string>检测线设置</string>
+     </property>
+    </action>
+    <action name="actionPumpSettings">
+     <property name="text">
+      <string>自动加气设置</string>
+     </property>
+    </action>
+    <action name="actionPushSettings">
+     <property name="text">
+      <string>推送设置</string>
+     </property>
+    </action>
+    <action name="actionRestoreDefaults">
+     <property name="text">
+      <string>恢复出厂配置</string>
+     </property>
+    </action>
+   </widget>
+  <customwidgets>
   <customwidget>
    <class>QChartView</class>
    <extends>QGraphicsView</extends>
