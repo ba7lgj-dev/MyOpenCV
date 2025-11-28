@@ -84,7 +84,7 @@ private:
     bool validateCameraConfig(CameraConfig &cfg) const;
 
     AppConfig appConfig;
-    QString lastPath;
+    mutable QString lastPath;
     mutable QMutex mutex;
 };
 
