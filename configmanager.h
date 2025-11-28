@@ -65,9 +65,18 @@ public:
     const AppConfig &config() const { return appConfig; }
     void updateMmPerPixel(int cameraId, double value);
     void setAutoPumpEnabled(bool enabled);
+    void setDualCameraMode(bool enabled);
     void restoreDefaults();
     CameraConfig camera(int idx) const;
     PushConfig pushConfig() const;
+    void setCameraIndex(int idx, int index);
+    void setCameraName(int idx, const QString &name);
+    void setCameraLineRatio(int idx, double ratio);
+    void setCameraLineHeight(int idx, int heightPx);
+    void setCameraWidthRegion(int idx, int heightPx);
+    void setCameraLineColor(int idx, const QColor &color);
+    void setCameraRotation(int idx, int rotation);
+    void swapCameraOrder();
 
     static QColor colorFromJson(const QJsonValue &v, const QColor &fallback = Qt::red);
     static QJsonValue colorToJson(const QColor &c);
@@ -79,6 +88,7 @@ private:
     void fromJson(const QJsonObject &obj);
     QJsonObject toJson() const;
     bool validateCameraConfig(CameraConfig &cfg) const;
+    void saveIfPossible() const;
 
     AppConfig appConfig;
     QString lastPath;

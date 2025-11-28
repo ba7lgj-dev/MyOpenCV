@@ -45,6 +45,9 @@ WidthResult MultiLineCannyWidthEstimator::estimate(const cv::Mat &frame, const C
     cv::Canny(blur, edges, lowThresh, highThresh);
 
     double r0 = cfg.lineRatio;
+    if (cfg.lineHeightPx > 0) {
+        r0 = std::clamp(cfg.lineHeightPx / static_cast<double>(frame.rows), 0.0, 1.0);
+    }
     double delta = 0.05;
     std::vector<double> ratios = { r0 - delta, r0, r0 + delta };
     std::vector<double> widths;

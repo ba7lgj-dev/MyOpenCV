@@ -121,6 +121,19 @@ void UsbCameraWorker::run()
             if (config->flipVertical) {
                 cv::flip(frame, frame, 0);
             }
+            switch (config->rotation) {
+            case 90:
+                cv::rotate(frame, frame, cv::ROTATE_90_CLOCKWISE);
+                break;
+            case 180:
+                cv::rotate(frame, frame, cv::ROTATE_180);
+                break;
+            case 270:
+                cv::rotate(frame, frame, cv::ROTATE_90_COUNTERCLOCKWISE);
+                break;
+            default:
+                break;
+            }
         }
         emit rawFrameReady(frame);
         emit frameReady(matToImage(frame));
