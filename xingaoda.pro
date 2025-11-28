@@ -30,8 +30,8 @@ HEADERS += \
 FORMS += \
     xingaodaapp.ui
 
-INCLUDEPATH += /usr/include/opencv4
-LIBS += -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_videoio
+INCLUDEPATH += C:\Software\opencv\opencv-build\install\include
+LIBS += C:\Software\opencv\opencv-build\install\x64\mingw\lib\libopencv_*.a
 
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
