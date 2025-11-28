@@ -37,6 +37,8 @@ public:
 public slots:
     void pulseLow(int ms) override;
     void forceHigh() override;
+    void setSafetyWindowMs(int value) { safetyWindowMs = value; }
+    void setSafetyMaxEvents(int value) { safetyMaxEvents = value; }
 
 private:
     void pushEvent(int ms);

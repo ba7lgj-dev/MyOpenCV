@@ -29,6 +29,11 @@ void xingaodaApp::setupConnections()
     connect(ui->btnAutoExp0, &QPushButton::clicked, this, &xingaodaApp::onAutoExp0);
     connect(ui->btnAutoExp1, &QPushButton::clicked, this, &xingaodaApp::onAutoExp1);
     connect(ui->chkAutoPump, &QCheckBox::toggled, &core, &ApplicationCore::setAutoPumpEnabled);
+    connect(ui->actionRestoreDefaults, &QAction::triggered, this, &xingaodaApp::onRestoreDefaults);
+    connect(ui->actionCameraSettings, &QAction::triggered, this, &xingaodaApp::onOpenCameraSettings);
+    connect(ui->actionDetectionSettings, &QAction::triggered, this, &xingaodaApp::onOpenDetectionSettings);
+    connect(ui->actionPumpSettings, &QAction::triggered, this, &xingaodaApp::onOpenPumpSettings);
+    connect(ui->actionPushSettings, &QAction::triggered, this, &xingaodaApp::onOpenPushSettings);
 
     connect(&core, &ApplicationCore::cameraFrame, this, &xingaodaApp::onCameraFrame);
     connect(&core, &ApplicationCore::widthUpdated, this, &xingaodaApp::onWidthUpdated);
@@ -105,5 +110,32 @@ void xingaodaApp::onSafety()
 {
     ui->chkAutoPump->setChecked(false);
     onMessage(tr("自动加气安全模式，已关闭自动加气"));
+}
+
+void xingaodaApp::onRestoreDefaults()
+{
+    core.config()->restoreDefaults();
+    core.config()->save("config.json");
+    onMessage(tr("已恢复默认配置并保存"));
+}
+
+void xingaodaApp::onOpenCameraSettings()
+{
+    onMessage(tr("摄像头管理：请在配置文件中调整索引与顺序"));
+}
+
+void xingaodaApp::onOpenDetectionSettings()
+{
+    onMessage(tr("检测线设置：当前支持通过配置文件调整"));
+}
+
+void xingaodaApp::onOpenPumpSettings()
+{
+    onMessage(tr("自动加气参数可在 config.json 中修改"));
+}
+
+void xingaodaApp::onOpenPushSettings()
+{
+    onMessage(tr("推送配置已启用，请在 config.json 中填写 URL 与 token"));
 }
 

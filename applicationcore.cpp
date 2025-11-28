@@ -16,21 +16,29 @@ ApplicationCore::ApplicationCore(QObject *parent)
     chartView->chart()->createDefaultAxes();
 
     connect(&pump, &Cp2102PumpController::safetyTriggered, this, &ApplicationCore::onPumpSafety);
+    connect(&push, &PushManager::warningRaised, this, [this](const QString &msg){ emit message(msg); });
 }
 
 ApplicationCore::~ApplicationCore()
 {
+    sendShutdownPush(tr("系统关闭"));
     delete estimator;
     delete chartView;
 }
 
 void ApplicationCore::initialize()
 {
-    cam0.open(0);
-    cam1.open(1);
+    if (!cfg.load(configPath)) {
+        cfg.save(configPath);
+    }
+    push.setConfig(cfg.pushConfig());
+    cam0.open(cfg.camera(0).index);
+    cam1.open(cfg.camera(1).index);
     cam0.setConfig(cfg.camera(0));
     cam1.setConfig(cfg.camera(1));
     autoPump = cfg.config().autoPumpEnabled;
+    pump.setSafetyMaxEvents(cfg.config().safetyMaxEvents);
+    pump.setSafetyWindowMs(cfg.config().safetyWindowMs);
 
     connect(&cam0, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame0);
     connect(&cam1, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame1);
@@ -38,6 +46,8 @@ void ApplicationCore::initialize()
     connect(&cam1, &UsbCamera::frameReady, [this](const QImage &img){ emit cameraFrame(1, img);});
     connect(&cam0, &UsbCamera::cameraError, this, [this](const QString &msg){ emit message(msg); LogManager::instance().logWarn(msg);});
     connect(&cam1, &UsbCamera::cameraError, this, [this](const QString &msg){ emit message(msg); LogManager::instance().logWarn(msg);});
+
+    sendStartupPush(tr("系统已启动"));
 }
 
 ConfigManager *ApplicationCore::config()
@@ -69,6 +79,7 @@ void ApplicationCore::stopCameras()
     cam0.stop();
     cam1.stop();
     pump.close();
+    sendShutdownPush(tr("手动停止"));
 }
 
 void ApplicationCore::calibrateWidth(int cameraId, double realMM)
@@ -141,5 +152,15 @@ void ApplicationCore::onPumpSafety(const QString &msg)
     autoPump = false;
     emit safetyModeEnabled();
     emit message(msg);
+}
+
+void ApplicationCore::sendStartupPush()
+{
+    push.sendEvent(tr("系统已启动"), tr("摄像头监控服务启动"));
+}
+
+void ApplicationCore::sendShutdownPush(const QString &reason)
+{
+    push.sendEvent(tr("系统状态"), reason);
 }
 

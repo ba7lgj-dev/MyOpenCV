@@ -210,9 +210,78 @@
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menubar"/>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1200</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuCamera">
+    <property name="title">
+     <string>摄像头管理</string>
+    </property>
+    <addaction name="actionCameraSettings"/>
+   </widget>
+   <widget class="QMenu" name="menuDetection">
+    <property name="title">
+     <string>检测参数</string>
+    </property>
+    <addaction name="actionDetectionSettings"/>
+   </widget>
+   <widget class="QMenu" name="menuPump">
+    <property name="title">
+     <string>自动加气配置</string>
+    </property>
+    <addaction name="actionPumpSettings"/>
+   </widget>
+   <widget class="QMenu" name="menuPush">
+    <property name="title">
+     <string>企业微信推送配置</string>
+    </property>
+    <addaction name="actionPushSettings"/>
+   </widget>
+   <widget class="QMenu" name="menuDefaults">
+    <property name="title">
+     <string>恢复默认设置</string>
+    </property>
+    <addaction name="actionRestoreDefaults"/>
+   </widget>
+   <addaction name="menuCamera"/>
+   <addaction name="menuDetection"/>
+   <addaction name="menuPump"/>
+   <addaction name="menuPush"/>
+   <addaction name="menuDefaults"/>
+  </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
+ <action name="actionCameraSettings">
+  <property name="text">
+   <string>摄像头设置</string>
+  </property>
+ </action>
+ <action name="actionDetectionSettings">
+  <property name="text">
+   <string>检测线设置</string>
+  </property>
+ </action>
+ <action name="actionPumpSettings">
+  <property name="text">
+   <string>自动加气设置</string>
+  </property>
+ </action>
+ <action name="actionPushSettings">
+  <property name="text">
+   <string>推送设置</string>
+  </property>
+ </action>
+ <action name="actionRestoreDefaults">
+  <property name="text">
+   <string>恢复出厂配置</string>
+  </property>
+ </action>
  <customwidgets>
   <customwidget>
    <class>QChartView</class>

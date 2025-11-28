@@ -30,7 +30,14 @@ bool ConfigManager::save(const QString &path) const
     if (!file.open(QIODevice::WriteOnly)) return false;
     QJsonDocument doc(toJson());
     file.write(doc.toJson(QJsonDocument::Indented));
+    lastPath = path;
     return true;
+}
+
+bool ConfigManager::saveLast()
+{
+    if (lastPath.isEmpty()) return false;
+    return save(lastPath);
 }
 
 void ConfigManager::updateMmPerPixel(int cameraId, double value)
@@ -73,6 +80,8 @@ void ConfigManager::restoreDefaults()
     appConfig.cameras[1].index = 1;
     appConfig.cameras[0].name = tr("Left Camera");
     appConfig.cameras[1].name = tr("Right Camera");
+    appConfig.push.templateText = tr("%1");
+    appConfig.push.maxFailures = 3;
 }
 
 void ConfigManager::fromJson(const QJsonObject &obj)
