@@ -68,6 +68,13 @@ public:
     void restoreDefaults();
     CameraConfig camera(int idx) const;
     PushConfig pushConfig() const;
+    void setCameraIndex(int idx, int cameraIndex);
+    void setCameraName(int idx, const QString &name);
+    void setLineRatio(int idx, double ratio);
+    void setLineColor(int idx, const QColor &color);
+    void setRotation(int idx, int rotationDeg);
+    void setDualCameraMode(bool dual);
+    void swapCameras();
 
     static QColor colorFromJson(const QJsonValue &v, const QColor &fallback = Qt::red);
     static QJsonValue colorToJson(const QColor &c);

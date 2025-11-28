@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QTimer>
+#include <QVector>
 #include "applicationcore.h"
 
 QT_BEGIN_NAMESPACE
@@ -28,12 +29,24 @@ private slots:
     void onWidthUpdated(int id, const WidthResult &result);
     void onMessage(const QString &msg);
     void onSafety();
+    void onCameraIndexChanged(int id, int index);
+    void onCameraNameChanged();
+    void onLineRatioChanged(int id, int value);
+    void onColorClicked(int id);
+    void onRotationChanged(int id, int idx);
+    void onSwapCameras();
+    void onDualModeToggled(bool enabled);
+    void onAvailableCameras(const QVector<int> &indexes);
+    void onRescan();
 
 private:
     void setupConnections();
     void updateWidthLabel(int id, const WidthResult &result);
+    void refreshCameraControls();
+    QImage drawOverlays(int id, const QImage &img);
 
     Ui::xingaodaApp *ui;
     ApplicationCore core;
+    WidthResult lastResults[2];
 };
 #endif // XINGAODAAPP_H

@@ -1,6 +1,7 @@
 #include "configmanager.h"
 #include "logmanager.h"
 #include <QMutexLocker>
+#include <algorithm>
 
 ConfigManager::ConfigManager(QObject *parent)
     : QObject(parent)
@@ -30,6 +31,7 @@ bool ConfigManager::save(const QString &path) const
     if (!file.open(QIODevice::WriteOnly)) return false;
     QJsonDocument doc(toJson());
     file.write(doc.toJson(QJsonDocument::Indented));
+    const_cast<ConfigManager*>(this)->lastPath = path;
     return true;
 }
 
@@ -63,6 +65,62 @@ PushConfig ConfigManager::pushConfig() const
 {
     QMutexLocker locker(&mutex);
     return appConfig.push;
+}
+
+void ConfigManager::setCameraIndex(int idx, int cameraIndex)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].index = cameraIndex;
+    if (!lastPath.isEmpty()) save(lastPath);
+}
+
+void ConfigManager::setCameraName(int idx, const QString &name)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].name = name;
+    if (!lastPath.isEmpty()) save(lastPath);
+}
+
+void ConfigManager::setLineRatio(int idx, double ratio)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].lineRatio = std::clamp(ratio, 0.0, 1.0);
+    if (!lastPath.isEmpty()) save(lastPath);
+}
+
+void ConfigManager::setLineColor(int idx, const QColor &color)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].lineColor = color;
+    if (!lastPath.isEmpty()) save(lastPath);
+}
+
+void ConfigManager::setRotation(int idx, int rotationDeg)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    int normalized = ((rotationDeg % 360) + 360) % 360;
+    if (normalized % 90 != 0) normalized = 0;
+    appConfig.cameras[idx].rotation = normalized;
+    if (!lastPath.isEmpty()) save(lastPath);
+}
+
+void ConfigManager::setDualCameraMode(bool dual)
+{
+    QMutexLocker locker(&mutex);
+    appConfig.dualCameraMode = dual;
+    if (!lastPath.isEmpty()) save(lastPath);
+}
+
+void ConfigManager::swapCameras()
+{
+    QMutexLocker locker(&mutex);
+    std::swap(appConfig.cameras[0], appConfig.cameras[1]);
+    if (!lastPath.isEmpty()) save(lastPath);
 }
 
 void ConfigManager::restoreDefaults()

@@ -88,15 +88,53 @@ QImage UsbCameraWorker::matToImage(const cv::Mat &mat)
     return QImage(rgb.data, rgb.cols, rgb.rows, static_cast<int>(rgb.step), QImage::Format_RGB888).copy();
 }
 
+cv::Mat UsbCameraWorker::applyRotation(const cv::Mat &frame) const
+{
+    if (!config) return frame;
+    cv::Mat rotated = frame;
+    switch (config->rotation % 360) {
+    case 90:
+        cv::rotate(frame, rotated, cv::ROTATE_90_CLOCKWISE);
+        break;
+    case 180:
+        cv::rotate(frame, rotated, cv::ROTATE_180);
+        break;
+    case 270:
+        cv::rotate(frame, rotated, cv::ROTATE_90_COUNTERCLOCKWISE);
+        break;
+    default:
+        break;
+    }
+    return rotated;
+}
+
 void UsbCameraWorker::run()
 {
-    running = openCamera();
-    if (!running) return;
+    {
+        QMutexLocker locker(&mutex);
+        running = true;
+    }
     while (true) {
         {
             QMutexLocker locker(&mutex);
             if (!running) break;
         }
+
+        if (!cap.isOpened()) {
+            if (!openCamera()) {
+                emit cameraError(tr("Camera %1 is busy or unavailable, retrying in %2s...").arg(index).arg(retryIntervalMs / 1000));
+                int steps = retryIntervalMs / 100;
+                for (int i = 0; i < steps; ++i) {
+                    {
+                        QMutexLocker locker(&mutex);
+                        if (!running) break;
+                    }
+                    msleep(100);
+                }
+                continue;
+            }
+        }
+
         cv::Mat frame;
         bool ok = cap.read(frame);
         if (!ok) {
@@ -122,6 +160,7 @@ void UsbCameraWorker::run()
                 cv::flip(frame, frame, 0);
             }
         }
+        frame = applyRotation(frame);
         emit rawFrameReady(frame);
         emit frameReady(matToImage(frame));
         if (autoExposureEnabled()) {

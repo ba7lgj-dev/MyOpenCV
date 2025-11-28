@@ -1,5 +1,7 @@
 #include "applicationcore.h"
 #include <QDateTime>
+#include <QStringList>
+#include <opencv2/videoio.hpp>
 
 ApplicationCore::ApplicationCore(QObject *parent)
     : QObject(parent)
@@ -26,8 +28,21 @@ ApplicationCore::~ApplicationCore()
 
 void ApplicationCore::initialize()
 {
-    cam0.open(0);
-    cam1.open(1);
+    if (!cfg.load(configPath)) {
+        cfg.restoreDefaults();
+        cfg.save(configPath);
+    }
+
+    availableCameras = scanCameras();
+    emit availableCamerasChanged(availableCameras);
+    emit message(tr("检测到摄像头: %1").arg([&](){
+        QStringList items;
+        for (int idx : availableCameras) items << QString::number(idx);
+        return items.join(", ");
+    }()));
+
+    cam0.open(cfg.camera(0).index);
+    cam1.open(cfg.camera(1).index);
     cam0.setConfig(cfg.camera(0));
     cam1.setConfig(cfg.camera(1));
     autoPump = cfg.config().autoPumpEnabled;
@@ -58,7 +73,12 @@ QChartView *ApplicationCore::trendChart()
 void ApplicationCore::startCameras()
 {
     cam0.start();
-    cam1.start();
+    if (cfg.config().dualCameraMode) {
+        cam1.start();
+    } else {
+        cam1.stop();
+    }
+    camerasRunning = true;
     if (!cfg.config().pumpPort.isEmpty()) {
         pump.open(cfg.config().pumpPort);
     }
@@ -68,6 +88,7 @@ void ApplicationCore::stopCameras()
 {
     cam0.stop();
     cam1.stop();
+    camerasRunning = false;
     pump.close();
 }
 
@@ -87,6 +108,66 @@ void ApplicationCore::setAutoPumpEnabled(bool enabled)
     autoPump = enabled;
     cfg.setAutoPumpEnabled(enabled);
     emit message(enabled ? tr("Auto pump enabled") : tr("Auto pump disabled"));
+}
+
+void ApplicationCore::setCameraIndex(int id, int cameraIndex)
+{
+    cfg.setCameraIndex(id, cameraIndex);
+    applyCameraConfig(id);
+}
+
+void ApplicationCore::setCameraName(int id, const QString &name)
+{
+    cfg.setCameraName(id, name);
+    emit cameraConfigApplied(id, cfg.camera(id));
+}
+
+void ApplicationCore::setLineRatio(int id, double ratio)
+{
+    cfg.setLineRatio(id, ratio);
+    emit cameraConfigApplied(id, cfg.camera(id));
+}
+
+void ApplicationCore::setLineColor(int id, const QColor &color)
+{
+    cfg.setLineColor(id, color);
+    emit cameraConfigApplied(id, cfg.camera(id));
+}
+
+void ApplicationCore::setRotation(int id, int rotation)
+{
+    cfg.setRotation(id, rotation);
+    applyCameraConfig(id);
+}
+
+void ApplicationCore::swapCameras()
+{
+    cfg.swapCameras();
+    applyCameraConfig(0);
+    applyCameraConfig(1);
+    emit cameraConfigApplied(0, cfg.camera(0));
+    emit cameraConfigApplied(1, cfg.camera(1));
+}
+
+void ApplicationCore::setDualCameraMode(bool dual)
+{
+    cfg.setDualCameraMode(dual);
+    if (!dual) {
+        cam1.stop();
+    } else if (camerasRunning) {
+        cam1.start();
+    }
+}
+
+void ApplicationCore::rescanCameras()
+{
+    availableCameras = scanCameras();
+    emit availableCamerasChanged(availableCameras);
+    emit message(tr("重新扫描摄像头: %1").arg([&](){
+        QStringList items;
+        for (int idx : availableCameras) items << QString::number(idx);
+        return items.join(", ");
+    }()));
 }
 
 void ApplicationCore::onFrame0(const cv::Mat &frame)
@@ -141,5 +222,33 @@ void ApplicationCore::onPumpSafety(const QString &msg)
     autoPump = false;
     emit safetyModeEnabled();
     emit message(msg);
+}
+
+void ApplicationCore::applyCameraConfig(int id)
+{
+    CameraConfig cfgCam = cfg.camera(id);
+    UsbCamera *cam = id == 0 ? &cam0 : &cam1;
+    bool shouldRun = camerasRunning && (id == 0 || cfg.config().dualCameraMode);
+    cam->stop();
+    cam->close();
+    cam->open(cfgCam.index);
+    cam->setConfig(cfgCam);
+    if (shouldRun) {
+        cam->start();
+    }
+    emit cameraConfigApplied(id, cfgCam);
+}
+
+QVector<int> ApplicationCore::scanCameras(int maxIndex) const
+{
+    QVector<int> indexes;
+    for (int i = 0; i <= maxIndex; ++i) {
+        cv::VideoCapture cap;
+        if (cap.open(i)) {
+            indexes.append(i);
+            cap.release();
+        }
+    }
+    return indexes;
 }
 

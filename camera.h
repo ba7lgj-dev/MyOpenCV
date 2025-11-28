@@ -48,6 +48,7 @@ protected:
 
 private:
     bool openCamera();
+    cv::Mat applyRotation(const cv::Mat &frame) const;
     void performAutoExposure(const cv::Mat &frame);
     QImage matToImage(const cv::Mat &mat);
 
@@ -58,6 +59,7 @@ private:
     int failCount {0};
     CameraConfig *config {nullptr};
     QMutex mutex;
+    int retryIntervalMs {3000};
 };
 
 class UsbCamera : public ICamera {
