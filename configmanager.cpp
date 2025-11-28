@@ -12,14 +12,18 @@ bool ConfigManager::load(const QString &path)
 {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
+        QMutexLocker locker(&mutex);
         lastPath = path;
         return false;
     }
     QByteArray data = file.readAll();
     QJsonDocument doc = QJsonDocument::fromJson(data);
     if (!doc.isObject()) return false;
-    fromJson(doc.object());
-    lastPath = path;
+    {
+        QMutexLocker locker(&mutex);
+        fromJson(doc.object());
+        lastPath = path;
+    }
     emit configReloaded();
     return true;
 }
@@ -37,29 +41,41 @@ bool ConfigManager::save(const QString &path) const
 
 void ConfigManager::updateMmPerPixel(int cameraId, double value)
 {
-    QMutexLocker locker(&mutex);
-    if (cameraId < 0 || cameraId > 1) return;
-    appConfig.cameras[cameraId].mmPerPixel = value;
-    if (!lastPath.isEmpty()) {
-        save(lastPath);
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        if (cameraId < 0 || cameraId > 1) return;
+        appConfig.cameras[cameraId].mmPerPixel = value;
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
     }
 }
 
 void ConfigManager::setAutoPumpEnabled(bool enabled)
 {
-    QMutexLocker locker(&mutex);
-    appConfig.autoPumpEnabled = enabled;
-    if (!lastPath.isEmpty()) {
-        save(lastPath);
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.autoPumpEnabled = enabled;
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
     }
 }
 
 void ConfigManager::setDualCameraMode(bool enabled)
 {
-    QMutexLocker locker(&mutex);
-    appConfig.dualCameraMode = enabled;
-    if (!lastPath.isEmpty()) {
-        save(lastPath);
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.dualCameraMode = enabled;
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
     }
 }
 
@@ -72,11 +88,15 @@ CameraConfig ConfigManager::camera(int idx) const
 
 void ConfigManager::setCameraConfig(int idx, const CameraConfig &cfg)
 {
-    QMutexLocker locker(&mutex);
-    if (idx < 0 || idx > 1) return;
-    appConfig.cameras[idx] = cfg;
-    if (!lastPath.isEmpty()) {
-        save(lastPath);
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        if (idx < 0 || idx > 1) return;
+        appConfig.cameras[idx] = cfg;
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
     }
 }
 
