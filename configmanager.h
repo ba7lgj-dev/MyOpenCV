@@ -9,6 +9,7 @@
 #include <QMutex>
 #include <QString>
 #include <QColor>
+#include <functional>
 
 struct CameraConfig {
     int index {0};
@@ -68,6 +69,10 @@ public:
     void restoreDefaults();
     CameraConfig camera(int idx) const;
     PushConfig pushConfig() const;
+    QString defaultConfigPath() const;
+    void setConfigPath(const QString &path);
+    bool updateCamera(int idx, const std::function<void(CameraConfig&)> &updater);
+    void setDualCameraMode(bool enabled);
 
     static QColor colorFromJson(const QJsonValue &v, const QColor &fallback = Qt::red);
     static QJsonValue colorToJson(const QColor &c);

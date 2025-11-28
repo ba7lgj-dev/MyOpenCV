@@ -5,6 +5,7 @@
 #include <QTimer>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
+#include <QList>
 #include "camera.h"
 #include "widthestimator.h"
 #include "configmanager.h"
@@ -30,6 +31,8 @@ signals:
     void widthUpdated(int id, const WidthResult &result);
     void message(const QString &msg);
     void safetyModeEnabled();
+    void availableCamerasChanged(const QList<int> &indexes);
+    void cameraStatus(int id, const QString &msg, bool error);
 
 public slots:
     void startCameras();
@@ -37,6 +40,16 @@ public slots:
     void calibrateWidth(int cameraId, double realMM);
     void toggleAutoExposure(int cameraId);
     void setAutoPumpEnabled(bool enabled);
+    void rescanCameras();
+    void setCameraIndex(int cameraId, int index);
+    void setCameraName(int cameraId, const QString &name);
+    void setCameraRotation(int cameraId, int rotation);
+    void setLineRatio(int cameraId, double ratio);
+    void setLineHeight(int cameraId, int px);
+    void setRegionHeight(int cameraId, int px);
+    void setLineColor(int cameraId, const QColor &color);
+    void swapCameras();
+    void setDualCameraMode(bool enabled);
 
 private slots:
     void onFrame0(const cv::Mat &frame);
@@ -47,6 +60,9 @@ private slots:
 private:
     void processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfg);
     void appendTrend(int id, double widthMM);
+    void applyCameraSettings();
+    QList<int> detectCameras(int maxIndex = 8) const;
+    QImage decorateFrame(int id, const QImage &img, const CameraConfig &cfg);
 
     ConfigManager cfg;
     CalibrationManager calib{&cfg};
@@ -60,6 +76,7 @@ private:
     QLineSeries *series0 {nullptr};
     QLineSeries *series1 {nullptr};
     WidthResult lastResult[2];
+    bool camerasRunning {false};
 };
 
 #endif // APPLICATIONCORE_H

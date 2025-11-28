@@ -6,6 +6,10 @@ ConfigManager::ConfigManager(QObject *parent)
     : QObject(parent)
 {
     restoreDefaults();
+    lastPath = defaultConfigPath();
+    if (!load(lastPath)) {
+        save(lastPath);
+    }
 }
 
 bool ConfigManager::load(const QString &path)
@@ -50,6 +54,39 @@ void ConfigManager::setAutoPumpEnabled(bool enabled)
     if (!lastPath.isEmpty()) {
         save(lastPath);
     }
+}
+
+QString ConfigManager::defaultConfigPath() const
+{
+    return QStringLiteral("config.json");
+}
+
+void ConfigManager::setConfigPath(const QString &path)
+{
+    QMutexLocker locker(&mutex);
+    lastPath = path;
+}
+
+bool ConfigManager::updateCamera(int idx, const std::function<void (CameraConfig &)> &updater)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1 || !updater) return false;
+    updater(appConfig.cameras[idx]);
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
+    emit configReloaded();
+    return true;
+}
+
+void ConfigManager::setDualCameraMode(bool enabled)
+{
+    QMutexLocker locker(&mutex);
+    appConfig.dualCameraMode = enabled;
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
+    emit configReloaded();
 }
 
 CameraConfig ConfigManager::camera(int idx) const

@@ -90,12 +90,18 @@ QImage UsbCameraWorker::matToImage(const cv::Mat &mat)
 
 void UsbCameraWorker::run()
 {
-    running = openCamera();
-    if (!running) return;
+    running = true;
     while (true) {
         {
             QMutexLocker locker(&mutex);
             if (!running) break;
+        }
+        if (!cap.isOpened()) {
+            if (!openCamera()) {
+                emit cameraError(tr("Camera %1 busy or unavailable, retry in 3s").arg(index));
+                msleep(3000);
+                continue;
+            }
         }
         cv::Mat frame;
         bool ok = cap.read(frame);
@@ -120,6 +126,19 @@ void UsbCameraWorker::run()
             }
             if (config->flipVertical) {
                 cv::flip(frame, frame, 0);
+            }
+            switch (config->rotation) {
+            case 90:
+                cv::rotate(frame, frame, cv::ROTATE_90_CLOCKWISE);
+                break;
+            case 180:
+                cv::rotate(frame, frame, cv::ROTATE_180);
+                break;
+            case 270:
+                cv::rotate(frame, frame, cv::ROTATE_90_COUNTERCLOCKWISE);
+                break;
+            default:
+                break;
             }
         }
         emit rawFrameReady(frame);

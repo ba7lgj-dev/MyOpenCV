@@ -26,17 +26,15 @@ WidthResult MultiLineCannyWidthEstimator::estimate(const cv::Mat &frame, const C
     WidthResult result;
     if (frame.empty()) return result;
 
-    cv::Mat roi = frame(cv::Rect(0, frame.rows / 4, frame.cols, frame.rows / 2)).clone();
-    cv::Mat processed = roi;
-    if (cfg.flipHorizontal) {
-        cv::flip(processed, processed, 1);
-    }
-    if (cfg.flipVertical) {
-        cv::flip(processed, processed, 0);
-    }
+    cv::Mat processed = frame.clone();
+    int targetRow = cfg.lineHeightPx > 0 ? std::min(cfg.lineHeightPx, processed.rows - 1)
+                                         : static_cast<int>(std::clamp(cfg.lineRatio, 0.0, 1.0) * processed.rows);
+    int regionHeight = cfg.widthRegionHeight > 0 ? std::min(cfg.widthRegionHeight, processed.rows) : processed.rows / 2;
+    int startRow = std::max(0, std::min(targetRow - regionHeight / 2, processed.rows - regionHeight));
+    cv::Mat roi = processed(cv::Rect(0, startRow, processed.cols, regionHeight)).clone();
 
     cv::Mat gray, blur;
-    cv::cvtColor(processed, gray, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(roi, gray, cv::COLOR_BGR2GRAY);
     cv::GaussianBlur(gray, blur, cv::Size(5,5), 1.0);
 
     cv::Mat edges;
@@ -57,7 +55,7 @@ WidthResult MultiLineCannyWidthEstimator::estimate(const cv::Mat &frame, const C
         if (left >= 0 && right >= 0 && right > left) {
             widths.push_back(right - left);
             if (!result.valid) {
-                result.usedRow = row + frame.rows / 4;
+                result.usedRow = row + startRow;
                 result.leftX = left;
                 result.rightX = right;
             }
