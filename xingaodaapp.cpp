@@ -30,6 +30,7 @@ xingaodaApp::xingaodaApp(QWidget *parent)
     ui->sliderLine->setValue(static_cast<int>(core.config()->camera(0).lineRatio * 100));
     setupConnections();
     core.initialize();
+    ui->chkAutoPump->setChecked(core.config()->config().autoPumpEnabled);
 }
 
 xingaodaApp::~xingaodaApp()
