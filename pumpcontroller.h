@@ -46,6 +46,7 @@ private:
     std::deque<PumpEvent> recentEvents;
     int safetyWindowMs {5 * 60 * 1000};
     int safetyMaxEvents {20};
+    bool pulseInProgress {false};
 };
 
 class PumpPolicy {
