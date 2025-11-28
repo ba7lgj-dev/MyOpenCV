@@ -25,14 +25,22 @@ void ConfigManager::resetDefaults()
 
 bool ConfigManager::load(const QString &path)
 {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
+    if (!QFile::exists(path)) {
         return false;
     }
-    QByteArray data = file.readAll();
-    QJsonDocument doc = QJsonDocument::fromJson(data);
-    if (!doc.isObject()) return false;
-    fromJson(doc.object());
+    QFile file(path);
+    if (path.endsWith(".ini", Qt::CaseInsensitive) || path.endsWith(".conf", Qt::CaseInsensitive)) {
+        QSettings settings(path, QSettings::IniFormat);
+        fromSettings(settings);
+    } else {
+        if (!file.open(QIODevice::ReadOnly)) {
+            return false;
+        }
+        QByteArray data = file.readAll();
+        QJsonDocument doc = QJsonDocument::fromJson(data);
+        if (!doc.isObject()) return false;
+        fromJson(doc.object());
+    }
     lastPath = path;
     emit configReloaded();
     return true;
@@ -41,10 +49,17 @@ bool ConfigManager::load(const QString &path)
 bool ConfigManager::save(const QString &path) const
 {
     QMutexLocker locker(&mutex);
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly)) return false;
-    QJsonDocument doc(toJson());
-    file.write(doc.toJson(QJsonDocument::Indented));
+    if (path.endsWith(".ini", Qt::CaseInsensitive) || path.endsWith(".conf", Qt::CaseInsensitive)) {
+        QSettings settings(path, QSettings::IniFormat);
+        toSettings(settings);
+        settings.sync();
+        if (settings.status() != QSettings::NoError) return false;
+    } else {
+        QFile file(path);
+        if (!file.open(QIODevice::WriteOnly)) return false;
+        QJsonDocument doc(toJson());
+        file.write(doc.toJson(QJsonDocument::Indented));
+    }
     return true;
 }
 
@@ -198,6 +213,106 @@ QJsonObject ConfigManager::toJson() const
     p.insert("failureThreshold", appConfig.push.failureThreshold);
     obj.insert("push", p);
     return obj;
+}
+
+void ConfigManager::fromSettings(QSettings &settings)
+{
+    settings.beginGroup("app");
+    appConfig.pumpPort = settings.value("pumpPort", appConfig.pumpPort).toString();
+    appConfig.autoPumpEnabled = settings.value("autoPumpEnabled", appConfig.autoPumpEnabled).toBool();
+    appConfig.safetyMaxEvents = settings.value("safetyMaxEvents", appConfig.safetyMaxEvents).toInt();
+    appConfig.safetyWindowMs = settings.value("safetyWindowMs", appConfig.safetyWindowMs).toInt();
+    appConfig.dualCameraMode = settings.value("dualCameraMode", appConfig.dualCameraMode).toBool();
+    settings.endGroup();
+
+    for (int i = 0; i < 2; ++i) {
+        settings.beginGroup(QStringLiteral("camera%1").arg(i));
+        CameraConfig cfg = appConfig.cameras[i];
+        cfg.index = settings.value("index", cfg.index).toInt();
+        cfg.name = settings.value("name", cfg.name).toString();
+        cfg.lineRatio = settings.value("lineRatio", cfg.lineRatio).toDouble();
+        cfg.mmPerPixel = settings.value("mmPerPixel", cfg.mmPerPixel).toDouble();
+        cfg.flipHorizontal = settings.value("flipHorizontal", cfg.flipHorizontal).toBool();
+        cfg.flipVertical = settings.value("flipVertical", cfg.flipVertical).toBool();
+        cfg.rotation = settings.value("rotation", cfg.rotation).toInt();
+        cfg.cannyLow = settings.value("cannyLow", cfg.cannyLow).toDouble();
+        cfg.cannyHigh = settings.value("cannyHigh", cfg.cannyHigh).toDouble();
+        cfg.pulseMs = settings.value("pulseMs", cfg.pulseMs).toInt();
+        cfg.thresholdMM = settings.value("thresholdMM", cfg.thresholdMM).toDouble();
+        cfg.cooldownMs = settings.value("cooldownMs", cfg.cooldownMs).toInt();
+        cfg.exposure = settings.value("exposure", cfg.exposure).toDouble();
+        cfg.brightness = settings.value("brightness", cfg.brightness).toDouble();
+        cfg.targetGrayMin = settings.value("targetGrayMin", cfg.targetGrayMin).toDouble();
+        cfg.targetGrayMax = settings.value("targetGrayMax", cfg.targetGrayMax).toDouble();
+        cfg.autoExposureStep = settings.value("autoExposureStep", cfg.autoExposureStep).toDouble();
+        cfg.autoExposureMin = settings.value("autoExposureMin", cfg.autoExposureMin).toDouble();
+        cfg.autoExposureMax = settings.value("autoExposureMax", cfg.autoExposureMax).toDouble();
+        QColor color(settings.value("detectLineColor", cfg.detectLineColor.name(QColor::HexRgb)).toString());
+        if (color.isValid()) {
+            cfg.detectLineColor = color;
+        }
+        if (!validateCameraConfig(cfg)) {
+            LogManager::instance().logWarn(tr("Invalid config for camera %1, fallback to defaults").arg(i));
+        }
+        appConfig.cameras[i] = cfg;
+        settings.endGroup();
+    }
+
+    settings.beginGroup("push");
+    appConfig.push.url = settings.value("url", appConfig.push.url).toString();
+    appConfig.push.token = settings.value("token", appConfig.push.token).toString();
+    appConfig.push.templateContent = settings.value("templateContent", appConfig.push.templateContent).toString();
+    appConfig.push.enabled = settings.value("enabled", appConfig.push.enabled).toBool();
+    appConfig.push.maxRetries = settings.value("maxRetries", appConfig.push.maxRetries).toInt();
+    appConfig.push.failureThreshold = settings.value("failureThreshold", appConfig.push.failureThreshold).toInt();
+    settings.endGroup();
+}
+
+void ConfigManager::toSettings(QSettings &settings) const
+{
+    settings.clear();
+    settings.beginGroup("app");
+    settings.setValue("pumpPort", appConfig.pumpPort);
+    settings.setValue("autoPumpEnabled", appConfig.autoPumpEnabled);
+    settings.setValue("safetyMaxEvents", appConfig.safetyMaxEvents);
+    settings.setValue("safetyWindowMs", appConfig.safetyWindowMs);
+    settings.setValue("dualCameraMode", appConfig.dualCameraMode);
+    settings.endGroup();
+
+    for (int i = 0; i < 2; ++i) {
+        settings.beginGroup(QStringLiteral("camera%1").arg(i));
+        const auto &cfg = appConfig.cameras[i];
+        settings.setValue("index", cfg.index);
+        settings.setValue("name", cfg.name);
+        settings.setValue("lineRatio", cfg.lineRatio);
+        settings.setValue("mmPerPixel", cfg.mmPerPixel);
+        settings.setValue("flipHorizontal", cfg.flipHorizontal);
+        settings.setValue("flipVertical", cfg.flipVertical);
+        settings.setValue("rotation", cfg.rotation);
+        settings.setValue("cannyLow", cfg.cannyLow);
+        settings.setValue("cannyHigh", cfg.cannyHigh);
+        settings.setValue("pulseMs", cfg.pulseMs);
+        settings.setValue("thresholdMM", cfg.thresholdMM);
+        settings.setValue("cooldownMs", cfg.cooldownMs);
+        settings.setValue("exposure", cfg.exposure);
+        settings.setValue("brightness", cfg.brightness);
+        settings.setValue("targetGrayMin", cfg.targetGrayMin);
+        settings.setValue("targetGrayMax", cfg.targetGrayMax);
+        settings.setValue("autoExposureStep", cfg.autoExposureStep);
+        settings.setValue("autoExposureMin", cfg.autoExposureMin);
+        settings.setValue("autoExposureMax", cfg.autoExposureMax);
+        settings.setValue("detectLineColor", cfg.detectLineColor.name(QColor::HexRgb));
+        settings.endGroup();
+    }
+
+    settings.beginGroup("push");
+    settings.setValue("url", appConfig.push.url);
+    settings.setValue("token", appConfig.push.token);
+    settings.setValue("templateContent", appConfig.push.templateContent);
+    settings.setValue("enabled", appConfig.push.enabled);
+    settings.setValue("maxRetries", appConfig.push.maxRetries);
+    settings.setValue("failureThreshold", appConfig.push.failureThreshold);
+    settings.endGroup();
 }
 
 bool ConfigManager::validateCameraConfig(CameraConfig &cfg) const
