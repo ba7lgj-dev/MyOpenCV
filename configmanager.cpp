@@ -6,6 +6,10 @@ ConfigManager::ConfigManager(QObject *parent)
     : QObject(parent)
 {
     restoreDefaults();
+    lastPath = "config.json";
+    if (!load(lastPath)) {
+        save(lastPath);
+    }
 }
 
 bool ConfigManager::load(const QString &path)
@@ -33,6 +37,13 @@ bool ConfigManager::save(const QString &path) const
     return true;
 }
 
+void ConfigManager::saveIfPossible() const
+{
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
+}
+
 void ConfigManager::updateMmPerPixel(int cameraId, double value)
 {
     QMutexLocker locker(&mutex);
@@ -47,9 +58,14 @@ void ConfigManager::setAutoPumpEnabled(bool enabled)
 {
     QMutexLocker locker(&mutex);
     appConfig.autoPumpEnabled = enabled;
-    if (!lastPath.isEmpty()) {
-        save(lastPath);
-    }
+    saveIfPossible();
+}
+
+void ConfigManager::setDualCameraMode(bool enabled)
+{
+    QMutexLocker locker(&mutex);
+    appConfig.dualCameraMode = enabled;
+    saveIfPossible();
 }
 
 CameraConfig ConfigManager::camera(int idx) const
@@ -73,6 +89,70 @@ void ConfigManager::restoreDefaults()
     appConfig.cameras[1].index = 1;
     appConfig.cameras[0].name = tr("Left Camera");
     appConfig.cameras[1].name = tr("Right Camera");
+}
+
+void ConfigManager::setCameraIndex(int idx, int index)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].index = index;
+    saveIfPossible();
+}
+
+void ConfigManager::setCameraName(int idx, const QString &name)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].name = name;
+    saveIfPossible();
+}
+
+void ConfigManager::setCameraLineRatio(int idx, double ratio)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].lineRatio = ratio;
+    appConfig.cameras[idx].lineHeightPx = 0;
+    saveIfPossible();
+}
+
+void ConfigManager::setCameraLineHeight(int idx, int heightPx)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].lineHeightPx = heightPx;
+    saveIfPossible();
+}
+
+void ConfigManager::setCameraWidthRegion(int idx, int heightPx)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].widthRegionHeight = heightPx;
+    saveIfPossible();
+}
+
+void ConfigManager::setCameraLineColor(int idx, const QColor &color)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].lineColor = color;
+    saveIfPossible();
+}
+
+void ConfigManager::setCameraRotation(int idx, int rotation)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].rotation = rotation;
+    saveIfPossible();
+}
+
+void ConfigManager::swapCameraOrder()
+{
+    QMutexLocker locker(&mutex);
+    std::swap(appConfig.cameras[0], appConfig.cameras[1]);
+    saveIfPossible();
 }
 
 void ConfigManager::fromJson(const QJsonObject &obj)

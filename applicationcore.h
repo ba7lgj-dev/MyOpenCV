@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QTimer>
+#include <QVector>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
 #include "camera.h"
@@ -24,12 +25,14 @@ public:
     ConfigManager *config();
     CalibrationManager *calibration();
     QChartView *trendChart();
+    QVector<int> availableCameras() const { return availableCameraIndexes; }
 
 signals:
     void cameraFrame(int id, const QImage &img);
     void widthUpdated(int id, const WidthResult &result);
     void message(const QString &msg);
     void safetyModeEnabled();
+    void camerasScanned(const QVector<int> &indexes);
 
 public slots:
     void startCameras();
@@ -37,6 +40,15 @@ public slots:
     void calibrateWidth(int cameraId, double realMM);
     void toggleAutoExposure(int cameraId);
     void setAutoPumpEnabled(bool enabled);
+    void rescanCameras();
+    void updateCameraSelection(int id, int index, const QString &name);
+    void swapCameraOrder();
+    void setDetectionLineRatio(int id, double ratio);
+    void setDetectionLineHeight(int id, int heightPx);
+    void setDetectionLineColor(int id, const QColor &color);
+    void setDetectionWidthRegion(int id, int heightPx);
+    void setRotation(int id, int angle);
+    void setDualCameraMode(bool enabled);
 
 private slots:
     void onFrame0(const cv::Mat &frame);
@@ -47,6 +59,8 @@ private slots:
 private:
     void processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfg);
     void appendTrend(int id, double widthMM);
+    void applyCameraSettings(int id);
+    QVector<int> detectCameras() const;
 
     ConfigManager cfg;
     CalibrationManager calib{&cfg};
@@ -60,6 +74,7 @@ private:
     QLineSeries *series0 {nullptr};
     QLineSeries *series1 {nullptr};
     WidthResult lastResult[2];
+    QVector<int> availableCameraIndexes;
 };
 
 #endif // APPLICATIONCORE_H
