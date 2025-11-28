@@ -210,7 +210,28 @@
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menubar"/>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1200</width>
+     <height>26</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuSystem">
+    <property name="title">
+     <string>系统设置</string>
+    </property>
+    <addaction name="actionCameraManager"/>
+   </widget>
+   <addaction name="menuSystem"/>
+  </widget>
+  <action name="actionCameraManager">
+   <property name="text">
+    <string>摄像头管理</string>
+   </property>
+  </action>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <customwidgets>

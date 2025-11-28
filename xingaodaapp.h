@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QTimer>
 #include "applicationcore.h"
+#include "widthestimator.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class xingaodaApp; }
@@ -28,12 +29,16 @@ private slots:
     void onWidthUpdated(int id, const WidthResult &result);
     void onMessage(const QString &msg);
     void onSafety();
+    void onManageCameras();
 
 private:
     void setupConnections();
     void updateWidthLabel(int id, const WidthResult &result);
+    QImage renderCameraFrame(int id, const QImage &img);
+    void updateCameraTitles();
 
     Ui::xingaodaApp *ui;
     ApplicationCore core;
+    WidthResult latestResults[2];
 };
 #endif // XINGAODAAPP_H

@@ -30,6 +30,7 @@ bool ConfigManager::save(const QString &path) const
     if (!file.open(QIODevice::WriteOnly)) return false;
     QJsonDocument doc(toJson());
     file.write(doc.toJson(QJsonDocument::Indented));
+    lastPath = path;
     return true;
 }
 
@@ -63,6 +64,71 @@ PushConfig ConfigManager::pushConfig() const
 {
     QMutexLocker locker(&mutex);
     return appConfig.push;
+}
+
+void ConfigManager::setCameraConfig(int idx, const CameraConfig &cfg)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx] = cfg;
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
+}
+
+void ConfigManager::setCameraIndex(int idx, int camIndex)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].index = camIndex;
+    if (!lastPath.isEmpty()) save(lastPath);
+}
+
+void ConfigManager::setCameraName(int idx, const QString &name)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].name = name;
+    if (!lastPath.isEmpty()) save(lastPath);
+}
+
+void ConfigManager::setCameraRotation(int idx, int rotationDeg)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].rotation = rotationDeg;
+    if (!lastPath.isEmpty()) save(lastPath);
+}
+
+void ConfigManager::setLineRatio(int idx, double ratio)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].lineRatio = ratio;
+    if (!lastPath.isEmpty()) save(lastPath);
+}
+
+void ConfigManager::setLineColor(int idx, const QColor &color)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].lineColor = color;
+    if (!lastPath.isEmpty()) save(lastPath);
+}
+
+void ConfigManager::setWidthRegionHeight(int idx, int height)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx].widthRegionHeight = height;
+    if (!lastPath.isEmpty()) save(lastPath);
+}
+
+void ConfigManager::setDualCameraMode(bool enabled)
+{
+    QMutexLocker locker(&mutex);
+    appConfig.dualCameraMode = enabled;
+    if (!lastPath.isEmpty()) save(lastPath);
 }
 
 void ConfigManager::restoreDefaults()

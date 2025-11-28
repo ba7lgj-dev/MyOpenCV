@@ -1,6 +1,6 @@
 QT       += core gui widgets serialport charts
 
-CONFIG += c++11
+CONFIG += c++17
 
 DEFINES += QT_DEPRECATED_WARNINGS
 
@@ -13,7 +13,8 @@ SOURCES += \
     calibrationmanager.cpp \
     logmanager.cpp \
     pumpcontroller.cpp \
-    applicationcore.cpp
+    applicationcore.cpp \
+    cameramanagerdialog.cpp
 
 HEADERS += \
     xingaodaapp.h \
@@ -23,7 +24,8 @@ HEADERS += \
     calibrationmanager.h \
     logmanager.h \
     pumpcontroller.h \
-    applicationcore.h
+    applicationcore.h \
+    cameramanagerdialog.h
 
 FORMS += \
     xingaodaapp.ui

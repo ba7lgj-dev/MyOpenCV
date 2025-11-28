@@ -26,10 +26,12 @@ ApplicationCore::~ApplicationCore()
 
 void ApplicationCore::initialize()
 {
-    cam0.open(0);
-    cam1.open(1);
-    cam0.setConfig(cfg.camera(0));
-    cam1.setConfig(cfg.camera(1));
+    if (!cfg.load(configPath)) {
+        cfg.restoreDefaults();
+        cfg.save(configPath);
+    }
+    rescanCameras();
+    openCamerasFromConfig();
     autoPump = cfg.config().autoPumpEnabled;
 
     connect(&cam0, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame0);
@@ -58,10 +60,13 @@ QChartView *ApplicationCore::trendChart()
 void ApplicationCore::startCameras()
 {
     cam0.start();
-    cam1.start();
+    if (cfg.config().dualCameraMode) {
+        cam1.start();
+    }
     if (!cfg.config().pumpPort.isEmpty()) {
         pump.open(cfg.config().pumpPort);
     }
+    running = true;
 }
 
 void ApplicationCore::stopCameras()
@@ -69,6 +74,7 @@ void ApplicationCore::stopCameras()
     cam0.stop();
     cam1.stop();
     pump.close();
+    running = false;
 }
 
 void ApplicationCore::calibrateWidth(int cameraId, double realMM)
@@ -96,13 +102,15 @@ void ApplicationCore::onFrame0(const cv::Mat &frame)
 
 void ApplicationCore::onFrame1(const cv::Mat &frame)
 {
+    if (!cfg.config().dualCameraMode) return;
     handleWidth(1, frame);
 }
 
 void ApplicationCore::handleWidth(int id, const cv::Mat &frame)
 {
     CameraConfig cfgCam = cfg.camera(id);
-    WidthResult r = estimator->estimate(frame, cfgCam);
+    cv::Mat rotated = applyRotation(frame, cfgCam.rotation);
+    WidthResult r = estimator->estimate(rotated, cfgCam);
     if (!r.valid) return;
     r.widthMM = r.widthPixels * cfgCam.mmPerPixel;
     lastResult[id] = r;
@@ -141,5 +149,61 @@ void ApplicationCore::onPumpSafety(const QString &msg)
     autoPump = false;
     emit safetyModeEnabled();
     emit message(msg);
+}
+
+cv::Mat ApplicationCore::applyRotation(const cv::Mat &frame, int rotation) const
+{
+    if (frame.empty()) return frame;
+    cv::Mat rotated = frame;
+    switch (rotation) {
+    case 90:
+        cv::rotate(frame, rotated, cv::ROTATE_90_CLOCKWISE);
+        break;
+    case 180:
+        cv::rotate(frame, rotated, cv::ROTATE_180);
+        break;
+    case 270:
+        cv::rotate(frame, rotated, cv::ROTATE_90_COUNTERCLOCKWISE);
+        break;
+    default:
+        break;
+    }
+    return rotated;
+}
+
+void ApplicationCore::rescanCameras()
+{
+    availableIndices.clear();
+    for (int i = 0; i < 10; ++i) {
+        cv::VideoCapture cap;
+        if (cap.open(i)) {
+            availableIndices.append(i);
+            cap.release();
+        }
+    }
+}
+
+void ApplicationCore::openCamerasFromConfig()
+{
+    cam0.close();
+    cam1.close();
+    CameraConfig c0 = cfg.camera(0);
+    CameraConfig c1 = cfg.camera(1);
+    cam0.open(c0.index);
+    cam0.setConfig(c0);
+    if (cfg.config().dualCameraMode) {
+        cam1.open(c1.index);
+        cam1.setConfig(c1);
+    }
+}
+
+void ApplicationCore::reloadCameraConfig()
+{
+    bool wasRunning = running;
+    stopCameras();
+    openCamerasFromConfig();
+    if (wasRunning) {
+        startCameras();
+    }
 }
 

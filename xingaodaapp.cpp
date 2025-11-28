@@ -1,8 +1,12 @@
 #include "xingaodaapp.h"
 #include "ui_xingaodaapp.h"
+#include "cameramanagerdialog.h"
 #include <QPixmap>
 #include <QImage>
 #include <QDateTime>
+#include <QPainter>
+#include <QTransform>
+#include <algorithm>
 
 xingaodaApp::xingaodaApp(QWidget *parent)
     : QMainWindow(parent)
@@ -12,6 +16,7 @@ xingaodaApp::xingaodaApp(QWidget *parent)
     ui->chartView->setChart(core.trendChart()->chart());
     setupConnections();
     core.initialize();
+    updateCameraTitles();
 }
 
 xingaodaApp::~xingaodaApp()
@@ -34,6 +39,7 @@ void xingaodaApp::setupConnections()
     connect(&core, &ApplicationCore::widthUpdated, this, &xingaodaApp::onWidthUpdated);
     connect(&core, &ApplicationCore::message, this, &xingaodaApp::onMessage);
     connect(&core, &ApplicationCore::safetyModeEnabled, this, &xingaodaApp::onSafety);
+    connect(ui->actionCameraManager, &QAction::triggered, this, &xingaodaApp::onManageCameras);
 }
 
 void xingaodaApp::onStart()
@@ -70,7 +76,8 @@ void xingaodaApp::onAutoExp1()
 
 void xingaodaApp::onCameraFrame(int id, const QImage &img)
 {
-    QPixmap pix = QPixmap::fromImage(img).scaled(400, 250, Qt::KeepAspectRatio);
+    QImage decorated = renderCameraFrame(id, img);
+    QPixmap pix = QPixmap::fromImage(decorated).scaled(400, 250, Qt::KeepAspectRatio);
     if (id == 0) {
         ui->labelCam0->setPixmap(pix);
     } else {
@@ -92,6 +99,7 @@ void xingaodaApp::updateWidthLabel(int id, const WidthResult &result)
 
 void xingaodaApp::onWidthUpdated(int id, const WidthResult &result)
 {
+    latestResults[id] = result;
     updateWidthLabel(id, result);
 }
 
@@ -105,5 +113,54 @@ void xingaodaApp::onSafety()
 {
     ui->chkAutoPump->setChecked(false);
     onMessage(tr("自动加气安全模式，已关闭自动加气"));
+}
+
+void xingaodaApp::onManageCameras()
+{
+    CameraManagerDialog dlg(&core, this);
+    dlg.exec();
+    updateCameraTitles();
+}
+
+QImage xingaodaApp::renderCameraFrame(int id, const QImage &img)
+{
+    CameraConfig cfgCam = core.config()->camera(id);
+    QImage rotated = img;
+    if (cfgCam.rotation != 0) {
+        QTransform t;
+        t.rotate(cfgCam.rotation);
+        rotated = img.transformed(t);
+    }
+
+    QImage canvas = rotated.copy();
+    QPainter painter(&canvas);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(QPen(cfgCam.lineColor, 2));
+
+    int lineY = static_cast<int>(cfgCam.lineRatio * canvas.height());
+    painter.drawLine(0, lineY, canvas.width(), lineY);
+
+    int regionHeight = cfgCam.widthRegionHeight > 0 ? cfgCam.widthRegionHeight : canvas.height() / 2;
+    regionHeight = std::max(10, std::min(regionHeight, canvas.height()));
+    int top = lineY - regionHeight / 2;
+    if (top < 0) top = 0;
+    if (top + regionHeight > canvas.height()) top = canvas.height() - regionHeight;
+    painter.drawRect(0, top, canvas.width() - 1, regionHeight);
+
+    if (latestResults[id].valid) {
+        painter.setPen(QPen(Qt::green, 2));
+        painter.drawLine(latestResults[id].leftX, top, latestResults[id].leftX, top + regionHeight);
+        painter.drawLine(latestResults[id].rightX, top, latestResults[id].rightX, top + regionHeight);
+        painter.drawText(latestResults[id].leftX + 4, top + 20, tr("左边界"));
+        painter.drawText(latestResults[id].rightX - 60, top + 20, tr("右边界"));
+    }
+    painter.end();
+    return canvas;
+}
+
+void xingaodaApp::updateCameraTitles()
+{
+    ui->groupCam0->setTitle(core.config()->camera(0).name.isEmpty() ? tr("Camera 0") : core.config()->camera(0).name);
+    ui->groupCam1->setTitle(core.config()->camera(1).name.isEmpty() ? tr("Camera 1") : core.config()->camera(1).name);
 }
 
