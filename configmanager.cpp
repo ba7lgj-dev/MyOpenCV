@@ -50,10 +50,14 @@ bool ConfigManager::save(const QString &path) const
 
 void ConfigManager::setConfig(const AppConfig &cfg)
 {
-    QMutexLocker locker(&mutex);
-    appConfig = cfg;
-    if (!lastPath.isEmpty()) {
-        save(lastPath);
+    QString pathCopy;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig = cfg;
+        pathCopy = lastPath;
+    }
+    if (!pathCopy.isEmpty()) {
+        save(pathCopy);
     }
     emit configReloaded();
 }
