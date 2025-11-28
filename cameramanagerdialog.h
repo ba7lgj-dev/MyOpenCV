@@ -2,7 +2,7 @@
 #define CAMERAMANAGERDIALOG_H
 
 #include <QDialog>
-#include <QVector>
+#include <QList>
 #include <QComboBox>
 #include <QLineEdit>
 #include <QCheckBox>
@@ -27,7 +27,7 @@ private:
 
     ApplicationCore *core {nullptr};
     ConfigManager *cfg {nullptr};
-    QVector<int> indices;
+    QList<int> indices;
 
     QComboBox *comboIndex0 {nullptr};
     QComboBox *comboIndex1 {nullptr};
