@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include <QTimer>
+#include <QMap>
+#include <functional>
 #include "applicationcore.h"
 
 QT_BEGIN_NAMESPACE
@@ -30,11 +32,22 @@ private slots:
     void onSafety();
     void onLineChanged(int value);
     void onResetDefaults();
+    void onCameraSettings();
+    void onDetectSettings();
+    void onPumpSettings();
+    void onPushSettings();
+    void onConfigReloaded();
 
 private:
     void setupConnections();
     void updateWidthLabel(int id, const WidthResult &result);
     QPixmap drawOverlay(int id, const QImage &img) const;
+    void showCameraDialog();
+    void showDetectDialog();
+    void showPumpDialog();
+    void showPushDialog();
+    QWidget *buildCameraGroup(int idx, const CameraConfig &cfg, QMap<QString, QWidget *> &widgets);
+    QWidget *buildDetectGroup(int idx, const CameraConfig &cfg, QMap<QString, QWidget *> &widgets);
 
     Ui::xingaodaApp *ui;
     ApplicationCore core;
