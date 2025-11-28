@@ -12,6 +12,7 @@ bool ConfigManager::load(const QString &path)
 {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
+        lastPath = path;
         return false;
     }
     QByteArray data = file.readAll();
@@ -30,6 +31,7 @@ bool ConfigManager::save(const QString &path) const
     if (!file.open(QIODevice::WriteOnly)) return false;
     QJsonDocument doc(toJson());
     file.write(doc.toJson(QJsonDocument::Indented));
+    lastPath = path;
     return true;
 }
 
@@ -52,11 +54,30 @@ void ConfigManager::setAutoPumpEnabled(bool enabled)
     }
 }
 
+void ConfigManager::setDualCameraMode(bool enabled)
+{
+    QMutexLocker locker(&mutex);
+    appConfig.dualCameraMode = enabled;
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
+}
+
 CameraConfig ConfigManager::camera(int idx) const
 {
     QMutexLocker locker(&mutex);
     if (idx < 0 || idx > 1) return CameraConfig();
     return appConfig.cameras[idx];
+}
+
+void ConfigManager::setCameraConfig(int idx, const CameraConfig &cfg)
+{
+    QMutexLocker locker(&mutex);
+    if (idx < 0 || idx > 1) return;
+    appConfig.cameras[idx] = cfg;
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
 }
 
 PushConfig ConfigManager::pushConfig() const
