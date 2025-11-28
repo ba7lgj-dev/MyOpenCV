@@ -26,7 +26,8 @@ WidthResult MultiLineCannyWidthEstimator::estimate(const cv::Mat &frame, const C
     WidthResult result;
     if (frame.empty()) return result;
 
-    cv::Mat roi = frame(cv::Rect(0, frame.rows / 4, frame.cols, frame.rows / 2)).clone();
+    cv::Mat rotated = frame;
+    cv::Mat roi = rotated(cv::Rect(0, rotated.rows / 4, rotated.cols, rotated.rows / 2)).clone();
     cv::Mat processed = roi;
     if (cfg.flipHorizontal) {
         cv::flip(processed, processed, 1);
@@ -45,19 +46,19 @@ WidthResult MultiLineCannyWidthEstimator::estimate(const cv::Mat &frame, const C
     cv::Canny(blur, edges, lowThresh, highThresh);
 
     double r0 = cfg.lineRatio;
-    double delta = 0.05;
-    std::vector<double> ratios = { r0 - delta, r0, r0 + delta };
+    int bandHeight = cfg.widthRegionHeight > 0 ? cfg.widthRegionHeight : std::max(1, processed.rows / 10);
+    int centerRow = static_cast<int>(std::min(1.0, std::max(0.0, r0)) * processed.rows);
+    int startRow = std::max(0, centerRow - bandHeight / 2);
+    int endRow = std::min(processed.rows - 1, centerRow + bandHeight / 2);
     std::vector<double> widths;
-    for (double r : ratios) {
-        double clamped = std::min(1.0, std::max(0.0, r));
-        int row = static_cast<int>(clamped * edges.rows);
+    for (int row = startRow; row <= endRow; row += std::max(1, bandHeight / 5)) {
         cv::Mat edgeRow = edges.row(row);
         int left = findEdgeFromLeft(edgeRow);
         int right = findEdgeFromRight(edgeRow);
         if (left >= 0 && right >= 0 && right > left) {
             widths.push_back(right - left);
             if (!result.valid) {
-                result.usedRow = row + frame.rows / 4;
+                result.usedRow = row + rotated.rows / 4;
                 result.leftX = left;
                 result.rightX = right;
             }

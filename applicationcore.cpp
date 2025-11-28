@@ -26,8 +26,12 @@ ApplicationCore::~ApplicationCore()
 
 void ApplicationCore::initialize()
 {
-    cam0.open(0);
-    cam1.open(1);
+    if (!cfg.load(defaultConfigPath)) {
+        cfg.restoreDefaults();
+        cfg.save(defaultConfigPath);
+    }
+    cam0.open(cfg.camera(0).index);
+    cam1.open(cfg.camera(1).index);
     cam0.setConfig(cfg.camera(0));
     cam1.setConfig(cfg.camera(1));
     autoPump = cfg.config().autoPumpEnabled;
@@ -57,8 +61,11 @@ QChartView *ApplicationCore::trendChart()
 
 void ApplicationCore::startCameras()
 {
+    running = true;
     cam0.start();
-    cam1.start();
+    if (cfg.config().dualCameraMode) {
+        cam1.start();
+    }
     if (!cfg.config().pumpPort.isEmpty()) {
         pump.open(cfg.config().pumpPort);
     }
@@ -66,6 +73,7 @@ void ApplicationCore::startCameras()
 
 void ApplicationCore::stopCameras()
 {
+    running = false;
     cam0.stop();
     cam1.stop();
     pump.close();
@@ -111,6 +119,34 @@ void ApplicationCore::handleWidth(int id, const cv::Mat &frame)
     emit widthUpdated(id, r);
     processPumpLogic(id, r, cfgCam);
     LogManager::instance().logInfo(QString("Camera%1 width=%2px, %3mm").arg(id).arg(r.widthPixels).arg(r.widthMM));
+}
+
+QList<int> ApplicationCore::availableCameraIndices(int maxIndex) const
+{
+    QList<int> result;
+    for (int i = 0; i <= maxIndex; ++i) {
+        cv::VideoCapture cap(i);
+        if (cap.isOpened()) {
+            result.append(i);
+            cap.release();
+        }
+    }
+    return result;
+}
+
+void ApplicationCore::reloadCamerasFromConfig()
+{
+    bool wasRunning = running;
+    stopCameras();
+    cam0.close();
+    cam1.close();
+    cam0.open(cfg.camera(0).index);
+    cam1.open(cfg.camera(1).index);
+    cam0.setConfig(cfg.camera(0));
+    cam1.setConfig(cfg.camera(1));
+    if (wasRunning) {
+        startCameras();
+    }
 }
 
 void ApplicationCore::processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfgCam)
