@@ -28,6 +28,11 @@ private slots:
     void onWidthUpdated(int id, const WidthResult &result);
     void onMessage(const QString &msg);
     void onSafety();
+    void onRestoreDefaults();
+    void onOpenCameraSettings();
+    void onOpenDetectionSettings();
+    void onOpenPumpSettings();
+    void onOpenPushSettings();
 
 private:
     void setupConnections();

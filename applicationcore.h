@@ -11,6 +11,7 @@
 #include "calibrationmanager.h"
 #include "pumpcontroller.h"
 #include "logmanager.h"
+#include "pushmanager.h"
 
 QT_CHARTS_USE_NAMESPACE
 
@@ -47,6 +48,8 @@ private slots:
 private:
     void processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfg);
     void appendTrend(int id, double widthMM);
+    void sendStartupPush();
+    void sendShutdownPush(const QString &reason);
 
     ConfigManager cfg;
     CalibrationManager calib{&cfg};
@@ -60,6 +63,8 @@ private:
     QLineSeries *series0 {nullptr};
     QLineSeries *series1 {nullptr};
     WidthResult lastResult[2];
+    PushManager push;
+    QString configPath {"config.json"};
 };
 
 #endif // APPLICATIONCORE_H

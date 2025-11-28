@@ -66,6 +66,7 @@ public:
     void updateMmPerPixel(int cameraId, double value);
     void setAutoPumpEnabled(bool enabled);
     void restoreDefaults();
+    bool saveLast();
     CameraConfig camera(int idx) const;
     PushConfig pushConfig() const;
 
