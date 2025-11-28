@@ -48,6 +48,11 @@ ConfigManager *ApplicationCore::config()
     return &cfg;
 }
 
+const ConfigManager *ApplicationCore::config() const
+{
+    return &cfg;
+}
+
 CalibrationManager *ApplicationCore::calibration()
 {
     return &calib;
