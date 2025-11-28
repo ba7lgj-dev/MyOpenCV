@@ -22,6 +22,7 @@ public:
 
     void initialize();
     ConfigManager *config();
+    const ConfigManager *config() const;
     CalibrationManager *calibration();
     QChartView *trendChart();
 
