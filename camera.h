@@ -6,6 +6,7 @@
 #include <QThread>
 #include <QMutex>
 #include <QWaitCondition>
+#include <QList>
 #include <opencv2/opencv.hpp>
 
 class CameraConfig;
@@ -69,6 +70,7 @@ public:
     bool open(int index) override;
     void close() override;
     bool isOpened() const override;
+    static QList<int> scanAvailable(int maxIndex = 5);
 
 public slots:
     void start() override;

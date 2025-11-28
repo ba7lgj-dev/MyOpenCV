@@ -1,5 +1,6 @@
 #include "applicationcore.h"
 #include <QDateTime>
+#include <QStringList>
 
 ApplicationCore::ApplicationCore(QObject *parent)
     : QObject(parent)
@@ -16,6 +17,7 @@ ApplicationCore::ApplicationCore(QObject *parent)
     chartView->chart()->createDefaultAxes();
 
     connect(&pump, &Cp2102PumpController::safetyTriggered, this, &ApplicationCore::onPumpSafety);
+    connect(&push, &PushManager::pushFailed, this, &ApplicationCore::onPushFailed);
 }
 
 ApplicationCore::~ApplicationCore()
@@ -26,11 +28,14 @@ ApplicationCore::~ApplicationCore()
 
 void ApplicationCore::initialize()
 {
-    cam0.open(0);
-    cam1.open(1);
+    logAvailableCameras();
+    cam0.open(cfg.camera(0).index);
+    cam1.open(cfg.camera(1).index);
     cam0.setConfig(cfg.camera(0));
     cam1.setConfig(cfg.camera(1));
     autoPump = cfg.config().autoPumpEnabled;
+    push.setConfig(cfg.pushConfig());
+    pushEvent(tr("系统已启动"));
 
     connect(&cam0, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame0);
     connect(&cam1, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame1);
@@ -69,6 +74,7 @@ void ApplicationCore::stopCameras()
     cam0.stop();
     cam1.stop();
     pump.close();
+    push.sendShutdown();
 }
 
 void ApplicationCore::calibrateWidth(int cameraId, double realMM)
@@ -87,6 +93,13 @@ void ApplicationCore::setAutoPumpEnabled(bool enabled)
     autoPump = enabled;
     cfg.setAutoPumpEnabled(enabled);
     emit message(enabled ? tr("Auto pump enabled") : tr("Auto pump disabled"));
+}
+
+void ApplicationCore::restoreDefaults()
+{
+    cfg.restoreDefaults();
+    push.setConfig(cfg.pushConfig());
+    emit message(tr("配置已恢复默认"));
 }
 
 void ApplicationCore::onFrame0(const cv::Mat &frame)
@@ -141,5 +154,32 @@ void ApplicationCore::onPumpSafety(const QString &msg)
     autoPump = false;
     emit safetyModeEnabled();
     emit message(msg);
+}
+
+void ApplicationCore::onPushFailed(const QString &reason)
+{
+    emit message(reason);
+}
+
+void ApplicationCore::pushEvent(const QString &event, const QString &detail)
+{
+    QString text = event;
+    if (!detail.isEmpty()) {
+        text += ": " + detail;
+    }
+    LogManager::instance().logInfo(text);
+    push.sendCustom(event, detail.isEmpty() ? event : detail);
+}
+
+void ApplicationCore::logAvailableCameras()
+{
+    QList<int> cams = UsbCamera::scanAvailable();
+    QStringList indexes;
+    for (int idx : cams) {
+        indexes << QString::number(idx);
+    }
+    QString msg = cams.isEmpty() ? tr("No cameras detected") : tr("Available cameras: %1").arg(indexes.join(","));
+    emit message(msg);
+    LogManager::instance().logInfo(msg);
 }
 

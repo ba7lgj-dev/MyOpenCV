@@ -41,9 +41,15 @@ bool UsbCameraWorker::openCamera()
     if (cap.isOpened()) {
         cap.release();
     }
-    bool ok = cap.open(index);
+    bool ok = false;
+    for (int attempt = 0; attempt < 3; ++attempt) {
+        ok = cap.open(index);
+        if (ok) break;
+        emit cameraError(tr("Camera %1 open failed (attempt %2)").arg(index).arg(attempt + 1));
+        msleep(500);
+    }
     if (!ok) {
-        emit cameraError(tr("Camera %1 open failed").arg(index));
+        emit cameraError(tr("Camera %1 open failed, possibly in use").arg(index));
         return false;
     }
     failCount = 0;
@@ -121,6 +127,13 @@ void UsbCameraWorker::run()
             if (config->flipVertical) {
                 cv::flip(frame, frame, 0);
             }
+            if (config->rotation == 90) {
+                cv::rotate(frame, frame, cv::ROTATE_90_CLOCKWISE);
+            } else if (config->rotation == 180) {
+                cv::rotate(frame, frame, cv::ROTATE_180);
+            } else if (config->rotation == 270) {
+                cv::rotate(frame, frame, cv::ROTATE_90_COUNTERCLOCKWISE);
+            }
         }
         emit rawFrameReady(frame);
         emit frameReady(matToImage(frame));
@@ -164,6 +177,19 @@ void UsbCamera::close()
 bool UsbCamera::isOpened() const
 {
     return worker != nullptr;
+}
+
+QList<int> UsbCamera::scanAvailable(int maxIndex)
+{
+    QList<int> result;
+    for (int i = 0; i <= maxIndex; ++i) {
+        cv::VideoCapture test(i);
+        if (test.isOpened()) {
+            result.append(i);
+            test.release();
+        }
+    }
+    return result;
 }
 
 void UsbCamera::start()

@@ -11,6 +11,7 @@
 #include "calibrationmanager.h"
 #include "pumpcontroller.h"
 #include "logmanager.h"
+#include "pushmanager.h"
 
 QT_CHARTS_USE_NAMESPACE
 
@@ -37,16 +38,20 @@ public slots:
     void calibrateWidth(int cameraId, double realMM);
     void toggleAutoExposure(int cameraId);
     void setAutoPumpEnabled(bool enabled);
+    void restoreDefaults();
 
 private slots:
     void onFrame0(const cv::Mat &frame);
     void onFrame1(const cv::Mat &frame);
     void handleWidth(int id, const cv::Mat &frame);
     void onPumpSafety(const QString &msg);
+    void onPushFailed(const QString &reason);
 
 private:
     void processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfg);
     void appendTrend(int id, double widthMM);
+    void pushEvent(const QString &event, const QString &detail = {});
+    void logAvailableCameras();
 
     ConfigManager cfg;
     CalibrationManager calib{&cfg};
@@ -54,6 +59,7 @@ private:
     UsbCamera cam0;
     UsbCamera cam1;
     Cp2102PumpController pump;
+    PushManager push;
     bool autoPump {false};
     qint64 lastPulseMs {0};
     QChartView *chartView {nullptr};

@@ -1,4 +1,4 @@
-QT       += core gui widgets serialport charts
+QT       += core gui widgets serialport charts network
 
 CONFIG += c++11
 
@@ -13,7 +13,8 @@ SOURCES += \
     calibrationmanager.cpp \
     logmanager.cpp \
     pumpcontroller.cpp \
-    applicationcore.cpp
+    applicationcore.cpp \
+    pushmanager.cpp
 
 HEADERS += \
     xingaodaapp.h \
@@ -23,7 +24,8 @@ HEADERS += \
     calibrationmanager.h \
     logmanager.h \
     pumpcontroller.h \
-    applicationcore.h
+    applicationcore.h \
+    pushmanager.h
 
 FORMS += \
     xingaodaapp.ui

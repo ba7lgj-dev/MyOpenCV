@@ -32,8 +32,11 @@ private slots:
 private:
     void setupConnections();
     void updateWidthLabel(int id, const WidthResult &result);
+    void paintOverlay(int id, QImage &img);
 
     Ui::xingaodaApp *ui;
     ApplicationCore core;
+    WidthResult lastResult[2];
+    double lastTrend[2] {0, 0};
 };
 #endif // XINGAODAAPP_H
