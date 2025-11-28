@@ -26,8 +26,9 @@ ApplicationCore::~ApplicationCore()
 
 void ApplicationCore::initialize()
 {
-    cam0.open(0);
-    cam1.open(1);
+    rescanCameras();
+    cam0.open(cfg.camera(0).index);
+    cam1.open(cfg.camera(1).index);
     cam0.setConfig(cfg.camera(0));
     cam1.setConfig(cfg.camera(1));
     autoPump = cfg.config().autoPumpEnabled;
@@ -58,7 +59,9 @@ QChartView *ApplicationCore::trendChart()
 void ApplicationCore::startCameras()
 {
     cam0.start();
-    cam1.start();
+    if (cfg.config().dualCameraMode) {
+        cam1.start();
+    }
     if (!cfg.config().pumpPort.isEmpty()) {
         pump.open(cfg.config().pumpPort);
     }
@@ -89,6 +92,57 @@ void ApplicationCore::setAutoPumpEnabled(bool enabled)
     emit message(enabled ? tr("Auto pump enabled") : tr("Auto pump disabled"));
 }
 
+void ApplicationCore::rescanCameras()
+{
+    availableCameraIndexes = detectCameras();
+    emit camerasScanned(availableCameraIndexes);
+}
+
+void ApplicationCore::updateCameraSelection(int id, int index, const QString &name)
+{
+    cfg.setCameraIndex(id, index);
+    cfg.setCameraName(id, name);
+    applyCameraSettings(id);
+}
+
+void ApplicationCore::swapCameraOrder()
+{
+    cfg.swapCameraOrder();
+    applyCameraSettings(0);
+    applyCameraSettings(1);
+}
+
+void ApplicationCore::setDetectionLineRatio(int id, double ratio)
+{
+    cfg.setCameraLineRatio(id, ratio);
+}
+
+void ApplicationCore::setDetectionLineHeight(int id, int heightPx)
+{
+    cfg.setCameraLineHeight(id, heightPx);
+}
+
+void ApplicationCore::setDetectionLineColor(int id, const QColor &color)
+{
+    cfg.setCameraLineColor(id, color);
+}
+
+void ApplicationCore::setDetectionWidthRegion(int id, int heightPx)
+{
+    cfg.setCameraWidthRegion(id, heightPx);
+}
+
+void ApplicationCore::setRotation(int id, int angle)
+{
+    cfg.setCameraRotation(id, angle);
+    applyCameraSettings(id);
+}
+
+void ApplicationCore::setDualCameraMode(bool enabled)
+{
+    cfg.setDualCameraMode(enabled);
+}
+
 void ApplicationCore::onFrame0(const cv::Mat &frame)
 {
     handleWidth(0, frame);
@@ -102,7 +156,21 @@ void ApplicationCore::onFrame1(const cv::Mat &frame)
 void ApplicationCore::handleWidth(int id, const cv::Mat &frame)
 {
     CameraConfig cfgCam = cfg.camera(id);
-    WidthResult r = estimator->estimate(frame, cfgCam);
+    cv::Mat rotated = frame.clone();
+    switch (cfgCam.rotation) {
+    case 90:
+        cv::rotate(rotated, rotated, cv::ROTATE_90_CLOCKWISE);
+        break;
+    case 180:
+        cv::rotate(rotated, rotated, cv::ROTATE_180);
+        break;
+    case 270:
+        cv::rotate(rotated, rotated, cv::ROTATE_90_COUNTERCLOCKWISE);
+        break;
+    default:
+        break;
+    }
+    WidthResult r = estimator->estimate(rotated, cfgCam);
     if (!r.valid) return;
     r.widthMM = r.widthPixels * cfgCam.mmPerPixel;
     lastResult[id] = r;
@@ -141,5 +209,27 @@ void ApplicationCore::onPumpSafety(const QString &msg)
     autoPump = false;
     emit safetyModeEnabled();
     emit message(msg);
+}
+
+void ApplicationCore::applyCameraSettings(int id)
+{
+    CameraConfig cfgCam = cfg.camera(id);
+    UsbCamera *target = id == 0 ? &cam0 : &cam1;
+    target->stop();
+    target->close();
+    target->open(cfgCam.index);
+    target->setConfig(cfgCam);
+}
+
+QVector<int> ApplicationCore::detectCameras() const
+{
+    QVector<int> result;
+    for (int i = 0; i < 8; ++i) {
+        cv::VideoCapture cap(i);
+        if (cap.isOpened()) {
+            result.append(i);
+        }
+    }
+    return result;
 }
 
