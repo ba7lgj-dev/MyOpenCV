@@ -26,9 +26,11 @@ ApplicationCore::~ApplicationCore()
 
 void ApplicationCore::initialize()
 {
-    if (!cfg.load("config.json")) {
+    const QString jsonPath = QStringLiteral("config.json");
+    const QString iniPath = QStringLiteral("config.ini");
+    if (!cfg.load(jsonPath) && !cfg.load(iniPath)) {
         cfg.resetDefaults();
-        cfg.save("config.json");
+        cfg.save(jsonPath);
     }
     cam0.open(cfg.camera(0).index);
     cam1.open(cfg.camera(1).index);

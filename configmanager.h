@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QMutex>
 #include <QColor>
+#include <QSettings>
 
 struct CameraConfig {
     int index {0};
@@ -72,6 +73,8 @@ signals:
 private:
     void fromJson(const QJsonObject &obj);
     QJsonObject toJson() const;
+    void fromSettings(QSettings &settings);
+    void toSettings(QSettings &settings) const;
     bool validateCameraConfig(CameraConfig &cfg) const;
 
     AppConfig appConfig;

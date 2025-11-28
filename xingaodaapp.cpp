@@ -20,24 +20,23 @@
 #include <QTextEdit>
 #include <QGroupBox>
 #include <QPushButton>
+#include <QSet>
+#include <algorithm>
 #include <opencv2/videoio.hpp>
 
 namespace {
 
-QList<int> availableCameraPorts()
+QList<int> availableCameraPorts(const AppConfig &config)
 {
-    QList<int> ports;
-    for (int i = 0; i < 10; ++i) {
-        cv::VideoCapture cap;
-        if (cap.open(i)) {
-            ports.append(i);
-            cap.release();
-        }
+    QSet<int> ports;
+    ports.insert(config.cameras[0].index);
+    ports.insert(config.cameras[1].index);
+    for (int i = 0; i < 4; ++i) {
+        ports.insert(i);
     }
-    if (ports.isEmpty()) {
-        ports.append(0);
-    }
-    return ports;
+    QList<int> result = ports.values();
+    std::sort(result.begin(), result.end());
+    return result;
 }
 
 }
@@ -216,7 +215,7 @@ QWidget *xingaodaApp::buildCameraGroup(int idx, const CameraConfig &cfg, QMap<QS
 
     QComboBox *indexCombo = new QComboBox(box);
     indexCombo->setEditable(true);
-    QList<int> ports = availableCameraPorts();
+    QList<int> ports = availableCameraPorts(core.config()->config());
     for (int port : ports) {
         indexCombo->addItem(QString::number(port));
     }
