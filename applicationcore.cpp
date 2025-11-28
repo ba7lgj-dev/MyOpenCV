@@ -1,5 +1,7 @@
 #include "applicationcore.h"
 #include <QDateTime>
+#include <QFile>
+#include <opencv2/opencv.hpp>
 
 ApplicationCore::ApplicationCore(QObject *parent)
     : QObject(parent)
@@ -9,13 +11,15 @@ ApplicationCore::ApplicationCore(QObject *parent)
     series1 = new QLineSeries();
     chartView = new QChartView();
     chartView->chart()->legend()->setVisible(true);
-    series0->setName("Camera0");
-    series1->setName("Camera1");
+    series0->setName(tr("摄像头0"));
+    series1->setName(tr("摄像头1"));
     chartView->chart()->addSeries(series0);
     chartView->chart()->addSeries(series1);
     chartView->chart()->createDefaultAxes();
 
     connect(&pump, &Cp2102PumpController::safetyTriggered, this, &ApplicationCore::onPumpSafety);
+    connect(&push, &PushManager::message, this, &ApplicationCore::message);
+    connect(&push, &PushManager::alarm, this, &ApplicationCore::onPushAlarm);
 }
 
 ApplicationCore::~ApplicationCore()
@@ -26,8 +30,15 @@ ApplicationCore::~ApplicationCore()
 
 void ApplicationCore::initialize()
 {
-    cam0.open(0);
-    cam1.open(1);
+    QString cfgPath = "config.json";
+    if (QFile::exists(cfgPath)) {
+        cfg.load(cfgPath);
+    } else {
+        cfg.save(cfgPath);
+    }
+    scanCameras();
+    cam0.open(cfg.camera(0).index);
+    cam1.open(cfg.camera(1).index);
     cam0.setConfig(cfg.camera(0));
     cam1.setConfig(cfg.camera(1));
     autoPump = cfg.config().autoPumpEnabled;
@@ -38,6 +49,8 @@ void ApplicationCore::initialize()
     connect(&cam1, &UsbCamera::frameReady, [this](const QImage &img){ emit cameraFrame(1, img);});
     connect(&cam0, &UsbCamera::cameraError, this, [this](const QString &msg){ emit message(msg); LogManager::instance().logWarn(msg);});
     connect(&cam1, &UsbCamera::cameraError, this, [this](const QString &msg){ emit message(msg); LogManager::instance().logWarn(msg);});
+
+    notifyPush(tr("程序启动"));
 }
 
 ConfigManager *ApplicationCore::config()
@@ -69,6 +82,7 @@ void ApplicationCore::stopCameras()
     cam0.stop();
     cam1.stop();
     pump.close();
+    notifyPush(tr("正常关闭"));
 }
 
 void ApplicationCore::calibrateWidth(int cameraId, double realMM)
@@ -86,7 +100,12 @@ void ApplicationCore::setAutoPumpEnabled(bool enabled)
 {
     autoPump = enabled;
     cfg.setAutoPumpEnabled(enabled);
-    emit message(enabled ? tr("Auto pump enabled") : tr("Auto pump disabled"));
+    emit message(enabled ? tr("自动加气已开启") : tr("自动加气已关闭"));
+}
+
+void ApplicationCore::sendPush(const QString &title, const QString &detail)
+{
+    notifyPush(title, detail);
 }
 
 void ApplicationCore::onFrame0(const cv::Mat &frame)
@@ -117,12 +136,15 @@ void ApplicationCore::processPumpLogic(int id, const WidthResult &result, const 
 {
     Q_UNUSED(id)
     if (!autoPump) return;
-    if (result.widthMM >= cfgCam.thresholdMM) return;
+    double threshold = cfg.config().pumpThresholdMM > 0 ? cfg.config().pumpThresholdMM : cfgCam.thresholdMM;
+    if (result.widthMM >= threshold) return;
     qint64 now = QDateTime::currentMSecsSinceEpoch();
-    if (now - lastPulseMs < cfgCam.cooldownMs) return;
-    int pulse = PumpPolicy::calcPulseMs(cfgCam.thresholdMM, result.widthMM);
+    int cooldown = cfg.config().pumpCooldownMs > 0 ? cfg.config().pumpCooldownMs : cfgCam.cooldownMs;
+    if (now - lastPulseMs < cooldown) return;
+    int pulse = PumpPolicy::calcPulseMs(threshold, result.widthMM);
     pump.pulseLow(pulse);
     lastPulseMs = now;
+    LogManager::instance().logInfo(tr("自动加气已执行，脉冲=%1ms").arg(pulse));
 }
 
 void ApplicationCore::appendTrend(int id, double widthMM)
@@ -141,5 +163,44 @@ void ApplicationCore::onPumpSafety(const QString &msg)
     autoPump = false;
     emit safetyModeEnabled();
     emit message(msg);
+}
+
+void ApplicationCore::onPushAlarm(const QString &msg)
+{
+    emit message(msg);
+}
+
+void ApplicationCore::scanCameras()
+{
+    availableCameras.clear();
+    for (int i = 0; i < 10; ++i) {
+        cv::VideoCapture cap(i);
+        if (cap.isOpened()) {
+            availableCameras.append(i);
+            cap.release();
+        }
+    }
+    if (availableCameras.isEmpty()) {
+        emit message(tr("未检测到可用摄像头"));
+        LogManager::instance().logWarn("No cameras detected");
+    }
+}
+
+void ApplicationCore::applyCameraConfig(int id)
+{
+    if (id == 0) {
+        cam0.close();
+        cam0.open(cfg.camera(0).index);
+        cam0.setConfig(cfg.camera(0));
+    } else {
+        cam1.close();
+        cam1.open(cfg.camera(1).index);
+        cam1.setConfig(cfg.camera(1));
+    }
+}
+
+void ApplicationCore::notifyPush(const QString &title, const QString &detail)
+{
+    push.sendEvent(title, detail);
 }
 

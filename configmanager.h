@@ -65,6 +65,15 @@ public:
     const AppConfig &config() const { return appConfig; }
     void updateMmPerPixel(int cameraId, double value);
     void setAutoPumpEnabled(bool enabled);
+    void updateCameraIndex(int cameraId, int index);
+    void updateCameraName(int cameraId, const QString &name);
+    void updateCameraRotation(int cameraId, int rotation);
+    void updateCameraLineRatio(int cameraId, double ratio);
+    void updateCameraLineColor(int cameraId, const QColor &color);
+    void updateCameraLineHeight(int cameraId, int px);
+    void updateCameraWidthRegion(int cameraId, int px);
+    void updatePumpConfig(const QString &port, int durationMs, double threshold, int cooldownMs);
+    void updatePushConfig(const PushConfig &push);
     void restoreDefaults();
     CameraConfig camera(int idx) const;
     PushConfig pushConfig() const;
@@ -79,6 +88,7 @@ private:
     void fromJson(const QJsonObject &obj);
     QJsonObject toJson() const;
     bool validateCameraConfig(CameraConfig &cfg) const;
+    void persistIfNeeded();
 
     AppConfig appConfig;
     QString lastPath;

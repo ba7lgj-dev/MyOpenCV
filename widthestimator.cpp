@@ -26,7 +26,11 @@ WidthResult MultiLineCannyWidthEstimator::estimate(const cv::Mat &frame, const C
     WidthResult result;
     if (frame.empty()) return result;
 
-    cv::Mat roi = frame(cv::Rect(0, frame.rows / 4, frame.cols, frame.rows / 2)).clone();
+    int centerRow = static_cast<int>(cfg.lineRatio * frame.rows);
+    int regionHeight = cfg.widthRegionHeight > 0 ? cfg.widthRegionHeight : frame.rows / 2;
+    int top = std::max(0, centerRow - regionHeight / 2);
+    int height = std::min(regionHeight, frame.rows - top);
+    cv::Mat roi = frame(cv::Rect(0, top, frame.cols, height)).clone();
     cv::Mat processed = roi;
     if (cfg.flipHorizontal) {
         cv::flip(processed, processed, 1);
@@ -57,7 +61,7 @@ WidthResult MultiLineCannyWidthEstimator::estimate(const cv::Mat &frame, const C
         if (left >= 0 && right >= 0 && right > left) {
             widths.push_back(right - left);
             if (!result.valid) {
-                result.usedRow = row + frame.rows / 4;
+                result.usedRow = row + top;
                 result.leftX = left;
                 result.rightX = right;
             }

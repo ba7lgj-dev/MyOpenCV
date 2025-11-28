@@ -38,18 +38,87 @@ void ConfigManager::updateMmPerPixel(int cameraId, double value)
     QMutexLocker locker(&mutex);
     if (cameraId < 0 || cameraId > 1) return;
     appConfig.cameras[cameraId].mmPerPixel = value;
-    if (!lastPath.isEmpty()) {
-        save(lastPath);
-    }
+    persistIfNeeded();
 }
 
 void ConfigManager::setAutoPumpEnabled(bool enabled)
 {
     QMutexLocker locker(&mutex);
     appConfig.autoPumpEnabled = enabled;
-    if (!lastPath.isEmpty()) {
-        save(lastPath);
-    }
+    persistIfNeeded();
+}
+
+void ConfigManager::updateCameraIndex(int cameraId, int index)
+{
+    QMutexLocker locker(&mutex);
+    if (cameraId < 0 || cameraId > 1) return;
+    appConfig.cameras[cameraId].index = index;
+    persistIfNeeded();
+}
+
+void ConfigManager::updateCameraName(int cameraId, const QString &name)
+{
+    QMutexLocker locker(&mutex);
+    if (cameraId < 0 || cameraId > 1) return;
+    appConfig.cameras[cameraId].name = name;
+    persistIfNeeded();
+}
+
+void ConfigManager::updateCameraRotation(int cameraId, int rotation)
+{
+    QMutexLocker locker(&mutex);
+    if (cameraId < 0 || cameraId > 1) return;
+    appConfig.cameras[cameraId].rotation = rotation;
+    persistIfNeeded();
+}
+
+void ConfigManager::updateCameraLineRatio(int cameraId, double ratio)
+{
+    QMutexLocker locker(&mutex);
+    if (cameraId < 0 || cameraId > 1) return;
+    appConfig.cameras[cameraId].lineRatio = ratio;
+    persistIfNeeded();
+}
+
+void ConfigManager::updateCameraLineColor(int cameraId, const QColor &color)
+{
+    QMutexLocker locker(&mutex);
+    if (cameraId < 0 || cameraId > 1) return;
+    appConfig.cameras[cameraId].lineColor = color;
+    persistIfNeeded();
+}
+
+void ConfigManager::updateCameraLineHeight(int cameraId, int px)
+{
+    QMutexLocker locker(&mutex);
+    if (cameraId < 0 || cameraId > 1) return;
+    appConfig.cameras[cameraId].lineHeightPx = px;
+    persistIfNeeded();
+}
+
+void ConfigManager::updateCameraWidthRegion(int cameraId, int px)
+{
+    QMutexLocker locker(&mutex);
+    if (cameraId < 0 || cameraId > 1) return;
+    appConfig.cameras[cameraId].widthRegionHeight = px;
+    persistIfNeeded();
+}
+
+void ConfigManager::updatePumpConfig(const QString &port, int durationMs, double threshold, int cooldownMs)
+{
+    QMutexLocker locker(&mutex);
+    appConfig.pumpPort = port;
+    appConfig.pumpDurationMs = durationMs;
+    appConfig.pumpThresholdMM = threshold;
+    appConfig.pumpCooldownMs = cooldownMs;
+    persistIfNeeded();
+}
+
+void ConfigManager::updatePushConfig(const PushConfig &push)
+{
+    QMutexLocker locker(&mutex);
+    appConfig.push = push;
+    persistIfNeeded();
 }
 
 CameraConfig ConfigManager::camera(int idx) const
@@ -71,8 +140,8 @@ void ConfigManager::restoreDefaults()
     appConfig = AppConfig();
     appConfig.cameras[0].index = 0;
     appConfig.cameras[1].index = 1;
-    appConfig.cameras[0].name = tr("Left Camera");
-    appConfig.cameras[1].name = tr("Right Camera");
+    appConfig.cameras[0].name = tr("左摄像头");
+    appConfig.cameras[1].name = tr("右摄像头");
 }
 
 void ConfigManager::fromJson(const QJsonObject &obj)
@@ -204,6 +273,13 @@ bool ConfigManager::validateCameraConfig(CameraConfig &cfg) const
         ok = false;
     }
     return ok;
+}
+
+void ConfigManager::persistIfNeeded()
+{
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
 }
 
 QColor ConfigManager::colorFromJson(const QJsonValue &v, const QColor &fallback)

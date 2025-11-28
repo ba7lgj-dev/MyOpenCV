@@ -90,26 +90,28 @@ QImage UsbCameraWorker::matToImage(const cv::Mat &mat)
 
 void UsbCameraWorker::run()
 {
-    running = openCamera();
-    if (!running) return;
+    running = true;
     while (true) {
         {
             QMutexLocker locker(&mutex);
             if (!running) break;
+        }
+        if (!cap.isOpened()) {
+            if (!openCamera()) {
+                emit cameraError(tr("摄像头 %1 打开失败，可能被占用，%2 秒后重试").arg(index).arg(3));
+                QThread::sleep(3);
+                continue;
+            }
         }
         cv::Mat frame;
         bool ok = cap.read(frame);
         if (!ok) {
             failCount++;
             if (failCount >= 10) {
-                emit cameraError(tr("Camera disconnected, trying to reconnect..."));
+                emit cameraError(tr("摄像头掉线，正在尝试重连..."));
                 cap.release();
                 msleep(500);
-                if (openCamera()) {
-                    emit cameraError(tr("Camera reconnected successfully."));
-                } else {
-                    emit cameraError(tr("Camera reconnect failed, please check USB."));
-                }
+                continue;
             }
             continue;
         }
@@ -120,6 +122,13 @@ void UsbCameraWorker::run()
             }
             if (config->flipVertical) {
                 cv::flip(frame, frame, 0);
+            }
+            if (config->rotation == 90) {
+                cv::rotate(frame, frame, cv::ROTATE_90_CLOCKWISE);
+            } else if (config->rotation == 180) {
+                cv::rotate(frame, frame, cv::ROTATE_180);
+            } else if (config->rotation == 270) {
+                cv::rotate(frame, frame, cv::ROTATE_90_COUNTERCLOCKWISE);
             }
         }
         emit rawFrameReady(frame);

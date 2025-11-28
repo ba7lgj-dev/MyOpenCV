@@ -5,12 +5,14 @@
 #include <QTimer>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
+#include <QList>
 #include "camera.h"
 #include "widthestimator.h"
 #include "configmanager.h"
 #include "calibrationmanager.h"
 #include "pumpcontroller.h"
 #include "logmanager.h"
+#include "pushmanager.h"
 
 QT_CHARTS_USE_NAMESPACE
 
@@ -24,6 +26,7 @@ public:
     ConfigManager *config();
     CalibrationManager *calibration();
     QChartView *trendChart();
+    QList<int> camerasDetected() const { return availableCameras; }
 
 signals:
     void cameraFrame(int id, const QImage &img);
@@ -37,16 +40,21 @@ public slots:
     void calibrateWidth(int cameraId, double realMM);
     void toggleAutoExposure(int cameraId);
     void setAutoPumpEnabled(bool enabled);
+    void sendPush(const QString &title, const QString &detail = QString());
+    void applyCameraConfig(int id);
 
 private slots:
     void onFrame0(const cv::Mat &frame);
     void onFrame1(const cv::Mat &frame);
     void handleWidth(int id, const cv::Mat &frame);
     void onPumpSafety(const QString &msg);
+    void onPushAlarm(const QString &msg);
 
 private:
     void processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfg);
     void appendTrend(int id, double widthMM);
+    void scanCameras();
+    void notifyPush(const QString &title, const QString &detail = QString());
 
     ConfigManager cfg;
     CalibrationManager calib{&cfg};
@@ -54,12 +62,14 @@ private:
     UsbCamera cam0;
     UsbCamera cam1;
     Cp2102PumpController pump;
+    PushManager push{&cfg};
     bool autoPump {false};
     qint64 lastPulseMs {0};
     QChartView *chartView {nullptr};
     QLineSeries *series0 {nullptr};
     QLineSeries *series1 {nullptr};
     WidthResult lastResult[2];
+    QList<int> availableCameras;
 };
 
 #endif // APPLICATIONCORE_H
