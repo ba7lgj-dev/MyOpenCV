@@ -65,6 +65,14 @@ public:
     const AppConfig &config() const { return appConfig; }
     void updateMmPerPixel(int cameraId, double value);
     void setAutoPumpEnabled(bool enabled);
+    void setDualCameraMode(bool enabled);
+    void setCameraIndex(int cameraId, int index);
+    void setCameraName(int cameraId, const QString &name);
+    void setCameraRotation(int cameraId, int rotationDeg);
+    void setLineRatio(int cameraId, double ratio);
+    void setLineHeightPx(int cameraId, int heightPx);
+    void setWidthRegionHeight(int cameraId, int heightPx);
+    void setLineColor(int cameraId, const QColor &color);
     void restoreDefaults();
     CameraConfig camera(int idx) const;
     PushConfig pushConfig() const;

@@ -30,6 +30,7 @@ bool ConfigManager::save(const QString &path) const
     if (!file.open(QIODevice::WriteOnly)) return false;
     QJsonDocument doc(toJson());
     file.write(doc.toJson(QJsonDocument::Indented));
+    lastPath = path;
     return true;
 }
 
@@ -47,6 +48,85 @@ void ConfigManager::setAutoPumpEnabled(bool enabled)
 {
     QMutexLocker locker(&mutex);
     appConfig.autoPumpEnabled = enabled;
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
+}
+
+void ConfigManager::setDualCameraMode(bool enabled)
+{
+    QMutexLocker locker(&mutex);
+    appConfig.dualCameraMode = enabled;
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
+}
+
+void ConfigManager::setCameraIndex(int cameraId, int index)
+{
+    QMutexLocker locker(&mutex);
+    if (cameraId < 0 || cameraId > 1) return;
+    appConfig.cameras[cameraId].index = index;
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
+}
+
+void ConfigManager::setCameraName(int cameraId, const QString &name)
+{
+    QMutexLocker locker(&mutex);
+    if (cameraId < 0 || cameraId > 1) return;
+    appConfig.cameras[cameraId].name = name;
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
+}
+
+void ConfigManager::setCameraRotation(int cameraId, int rotationDeg)
+{
+    QMutexLocker locker(&mutex);
+    if (cameraId < 0 || cameraId > 1) return;
+    appConfig.cameras[cameraId].rotation = rotationDeg;
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
+}
+
+void ConfigManager::setLineRatio(int cameraId, double ratio)
+{
+    QMutexLocker locker(&mutex);
+    if (cameraId < 0 || cameraId > 1) return;
+    appConfig.cameras[cameraId].lineRatio = ratio;
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
+}
+
+void ConfigManager::setLineHeightPx(int cameraId, int heightPx)
+{
+    QMutexLocker locker(&mutex);
+    if (cameraId < 0 || cameraId > 1) return;
+    appConfig.cameras[cameraId].lineHeightPx = heightPx;
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
+}
+
+void ConfigManager::setWidthRegionHeight(int cameraId, int heightPx)
+{
+    QMutexLocker locker(&mutex);
+    if (cameraId < 0 || cameraId > 1) return;
+    appConfig.cameras[cameraId].widthRegionHeight = heightPx;
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
+}
+
+void ConfigManager::setLineColor(int cameraId, const QColor &color)
+{
+    QMutexLocker locker(&mutex);
+    if (cameraId < 0 || cameraId > 1) return;
+    appConfig.cameras[cameraId].lineColor = color;
     if (!lastPath.isEmpty()) {
         save(lastPath);
     }

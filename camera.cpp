@@ -121,6 +121,13 @@ void UsbCameraWorker::run()
             if (config->flipVertical) {
                 cv::flip(frame, frame, 0);
             }
+            if (config->rotation == 90) {
+                cv::rotate(frame, frame, cv::ROTATE_90_CLOCKWISE);
+            } else if (config->rotation == 180) {
+                cv::rotate(frame, frame, cv::ROTATE_180);
+            } else if (config->rotation == 270) {
+                cv::rotate(frame, frame, cv::ROTATE_90_COUNTERCLOCKWISE);
+            }
         }
         emit rawFrameReady(frame);
         emit frameReady(matToImage(frame));
@@ -146,6 +153,12 @@ UsbCamera::~UsbCamera()
 
 bool UsbCamera::open(int idx)
 {
+    cv::VideoCapture testCap;
+    if (!testCap.open(idx)) {
+        emit cameraError(tr("Camera %1 is busy or unavailable").arg(idx));
+        return false;
+    }
+    testCap.release();
     index = idx;
     setupWorker();
     return true;

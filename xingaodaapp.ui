@@ -199,6 +199,295 @@
      </layout>
     </item>
     <item>
+     <widget class="QGroupBox" name="groupCameraSettings">
+      <property name="title">
+       <string>摄像头参数</string>
+      </property>
+      <layout class="QGridLayout" name="gridCameraSettings">
+       <item row="0" column="0">
+        <widget class="QLabel" name="labelDual">
+         <property name="text">
+          <string>模式</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QCheckBox" name="chkDualMode">
+         <property name="text">
+          <string>双摄模式</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="QPushButton" name="btnSwapCamera">
+         <property name="text">
+          <string>互换顺序</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="labelCam0Title">
+         <property name="text">
+          <string>摄像头0</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QComboBox" name="comboCamera0"/>
+       </item>
+       <item row="1" column="2">
+        <widget class="QLabel" name="labelName0">
+         <property name="text">
+          <string>名称</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="3">
+        <widget class="QLineEdit" name="editCamera0">
+         <property name="placeholderText">
+          <string>左摄像头</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="4">
+        <widget class="QLabel" name="labelRotation0">
+         <property name="text">
+          <string>旋转</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="5">
+        <widget class="QComboBox" name="comboRotation0">
+         <item>
+          <property name="text">
+           <string>0°</string>
+          </property>
+          <property name="userData">
+           <number>0</number>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>90°</string>
+          </property>
+          <property name="userData">
+           <number>90</number>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>180°</string>
+          </property>
+          <property name="userData">
+           <number>180</number>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>270°</string>
+          </property>
+          <property name="userData">
+           <number>270</number>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="labelLinePos0">
+         <property name="text">
+          <string>检测线: 50%</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1" colspan="2">
+        <widget class="QSlider" name="sliderLine0">
+         <property name="maximum">
+          <number>100</number>
+         </property>
+         <property name="value">
+          <number>50</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="3">
+        <widget class="QLabel" name="labelLineHeight0">
+         <property name="text">
+          <string>像素高度: 0</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="4">
+        <widget class="QSlider" name="sliderHeight0">
+         <property name="maximum">
+          <number>800</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="5">
+        <widget class="QPushButton" name="btnColor0">
+         <property name="text">
+          <string>线颜色0</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="labelRegion0">
+         <property name="text">
+          <string>检测区: 0px</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1" colspan="3">
+        <widget class="QSlider" name="sliderRegion0">
+         <property name="maximum">
+          <number>800</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="labelCam1Title">
+         <property name="text">
+          <string>摄像头1</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QComboBox" name="comboCamera1"/>
+       </item>
+       <item row="4" column="2">
+        <widget class="QLabel" name="labelName1">
+         <property name="text">
+          <string>名称</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="3">
+        <widget class="QLineEdit" name="editCamera1">
+         <property name="placeholderText">
+          <string>右摄像头</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="4">
+        <widget class="QLabel" name="labelRotation1">
+         <property name="text">
+          <string>旋转</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="5">
+        <widget class="QComboBox" name="comboRotation1">
+         <item>
+          <property name="text">
+           <string>0°</string>
+          </property>
+          <property name="userData">
+           <number>0</number>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>90°</string>
+          </property>
+          <property name="userData">
+           <number>90</number>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>180°</string>
+          </property>
+          <property name="userData">
+           <number>180</number>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>270°</string>
+          </property>
+          <property name="userData">
+           <number>270</number>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="labelLinePos1">
+         <property name="text">
+          <string>检测线: 50%</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1" colspan="2">
+        <widget class="QSlider" name="sliderLine1">
+         <property name="maximum">
+          <number>100</number>
+         </property>
+         <property name="value">
+          <number>50</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="3">
+        <widget class="QLabel" name="labelLineHeight1">
+         <property name="text">
+          <string>像素高度: 0</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="4">
+        <widget class="QSlider" name="sliderHeight1">
+         <property name="maximum">
+          <number>800</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="5">
+        <widget class="QPushButton" name="btnColor1">
+         <property name="text">
+          <string>线颜色1</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0">
+        <widget class="QLabel" name="labelRegion1">
+         <property name="text">
+          <string>检测区: 0px</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1" colspan="3">
+        <widget class="QSlider" name="sliderRegion1">
+         <property name="maximum">
+          <number>800</number>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
      <widget class="QChartView" name="chartView"/>
     </item>
     <item>
@@ -210,7 +499,44 @@
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menubar"/>
+  <widget class="QMenuBar" name="menubar">
+   <addaction name="menuSystem"/>
+   <widget class="QMenu" name="menuSystem">
+    <property name="title">
+     <string>系统设置</string>
+    </property>
+    <addaction name="actionCamera"/>
+    <addaction name="actionDetect"/>
+    <addaction name="actionAutoPump"/>
+    <addaction name="actionPush"/>
+    <addaction name="actionReset"/>
+   </widget>
+  </widget>
+  <action name="actionCamera">
+   <property name="text">
+    <string>摄像头管理</string>
+   </property>
+  </action>
+  <action name="actionDetect">
+   <property name="text">
+    <string>检测参数</string>
+   </property>
+  </action>
+  <action name="actionAutoPump">
+   <property name="text">
+    <string>自动加气配置</string>
+   </property>
+  </action>
+  <action name="actionPush">
+   <property name="text">
+    <string>推送配置</string>
+   </property>
+  </action>
+  <action name="actionReset">
+   <property name="text">
+    <string>恢复默认设置</string>
+   </property>
+  </action>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <customwidgets>
