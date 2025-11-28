@@ -5,8 +5,7 @@
 ConfigManager::ConfigManager(QObject *parent)
     : QObject(parent)
 {
-    appConfig.cameras[0].index = 0;
-    appConfig.cameras[1].index = 1;
+    restoreDefaults();
 }
 
 bool ConfigManager::load(const QString &path)
@@ -44,6 +43,15 @@ void ConfigManager::updateMmPerPixel(int cameraId, double value)
     }
 }
 
+void ConfigManager::setAutoPumpEnabled(bool enabled)
+{
+    QMutexLocker locker(&mutex);
+    appConfig.autoPumpEnabled = enabled;
+    if (!lastPath.isEmpty()) {
+        save(lastPath);
+    }
+}
+
 CameraConfig ConfigManager::camera(int idx) const
 {
     QMutexLocker locker(&mutex);
@@ -51,13 +59,34 @@ CameraConfig ConfigManager::camera(int idx) const
     return appConfig.cameras[idx];
 }
 
+PushConfig ConfigManager::pushConfig() const
+{
+    QMutexLocker locker(&mutex);
+    return appConfig.push;
+}
+
+void ConfigManager::restoreDefaults()
+{
+    QMutexLocker locker(&mutex);
+    appConfig = AppConfig();
+    appConfig.cameras[0].index = 0;
+    appConfig.cameras[1].index = 1;
+    appConfig.cameras[0].name = tr("Left Camera");
+    appConfig.cameras[1].name = tr("Right Camera");
+}
+
 void ConfigManager::fromJson(const QJsonObject &obj)
 {
     if (obj.contains("pumpPort")) {
         appConfig.pumpPort = obj.value("pumpPort").toString();
     }
+    appConfig.pumpDurationMs = obj.value("pumpDurationMs").toInt(appConfig.pumpDurationMs);
+    appConfig.pumpThresholdMM = obj.value("pumpThresholdMM").toDouble(appConfig.pumpThresholdMM);
+    appConfig.pumpCooldownMs = obj.value("pumpCooldownMs").toInt(appConfig.pumpCooldownMs);
+    appConfig.autoPumpEnabled = obj.value("autoPumpEnabled").toBool(appConfig.autoPumpEnabled);
     appConfig.safetyMaxEvents = obj.value("safetyMaxEvents").toInt(appConfig.safetyMaxEvents);
     appConfig.safetyWindowMs = obj.value("safetyWindowMs").toInt(appConfig.safetyWindowMs);
+    appConfig.dualCameraMode = obj.value("dualCameraMode").toBool(appConfig.dualCameraMode);
 
     if (obj.contains("cameras") && obj.value("cameras").isArray()) {
         QJsonArray arr = obj.value("cameras").toArray();
@@ -65,7 +94,12 @@ void ConfigManager::fromJson(const QJsonObject &obj)
             QJsonObject c = arr.at(i).toObject();
             CameraConfig cfg;
             cfg.index = c.value("index").toInt(i);
+            cfg.name = c.value("name").toString();
             cfg.lineRatio = c.value("lineRatio").toDouble(0.5);
+            cfg.lineHeightPx = c.value("lineHeightPx").toInt(0);
+            cfg.widthRegionHeight = c.value("widthRegionHeight").toInt(0);
+            cfg.lineColor = colorFromJson(c.value("lineColor"), Qt::red);
+            cfg.rotation = c.value("rotation").toInt(0);
             cfg.mmPerPixel = c.value("mmPerPixel").toDouble(0.5);
             cfg.flipHorizontal = c.value("flipHorizontal").toBool(false);
             cfg.flipVertical = c.value("flipVertical").toBool(false);
@@ -87,21 +121,40 @@ void ConfigManager::fromJson(const QJsonObject &obj)
             appConfig.cameras[i] = cfg;
         }
     }
+
+    if (obj.contains("push") && obj.value("push").isObject()) {
+        QJsonObject p = obj.value("push").toObject();
+        appConfig.push.url = p.value("url").toString();
+        appConfig.push.token = p.value("token").toString();
+        appConfig.push.templateText = p.value("templateText").toString();
+        appConfig.push.enabled = p.value("enabled").toBool(false);
+        appConfig.push.maxFailures = p.value("maxFailures").toInt(appConfig.push.maxFailures);
+    }
 }
 
 QJsonObject ConfigManager::toJson() const
 {
     QJsonObject obj;
     obj.insert("pumpPort", appConfig.pumpPort);
+    obj.insert("pumpDurationMs", appConfig.pumpDurationMs);
+    obj.insert("pumpThresholdMM", appConfig.pumpThresholdMM);
+    obj.insert("pumpCooldownMs", appConfig.pumpCooldownMs);
+    obj.insert("autoPumpEnabled", appConfig.autoPumpEnabled);
     obj.insert("safetyMaxEvents", appConfig.safetyMaxEvents);
     obj.insert("safetyWindowMs", appConfig.safetyWindowMs);
+    obj.insert("dualCameraMode", appConfig.dualCameraMode);
 
     QJsonArray arr;
     for (int i = 0; i < 2; ++i) {
         const auto &cfg = appConfig.cameras[i];
         QJsonObject c;
         c.insert("index", cfg.index);
+        c.insert("name", cfg.name);
         c.insert("lineRatio", cfg.lineRatio);
+        c.insert("lineHeightPx", cfg.lineHeightPx);
+        c.insert("widthRegionHeight", cfg.widthRegionHeight);
+        c.insert("lineColor", colorToJson(cfg.lineColor));
+        c.insert("rotation", cfg.rotation);
         c.insert("mmPerPixel", cfg.mmPerPixel);
         c.insert("flipHorizontal", cfg.flipHorizontal);
         c.insert("flipVertical", cfg.flipVertical);
@@ -120,6 +173,14 @@ QJsonObject ConfigManager::toJson() const
         arr.append(c);
     }
     obj.insert("cameras", arr);
+
+    QJsonObject push;
+    push.insert("url", appConfig.push.url);
+    push.insert("token", appConfig.push.token);
+    push.insert("templateText", appConfig.push.templateText);
+    push.insert("enabled", appConfig.push.enabled);
+    push.insert("maxFailures", appConfig.push.maxFailures);
+    obj.insert("push", push);
     return obj;
 }
 
@@ -143,5 +204,29 @@ bool ConfigManager::validateCameraConfig(CameraConfig &cfg) const
         ok = false;
     }
     return ok;
+}
+
+QColor ConfigManager::colorFromJson(const QJsonValue &v, const QColor &fallback)
+{
+    if (v.isArray()) {
+        QJsonArray arr = v.toArray();
+        if (arr.size() >= 3) {
+            return QColor(arr.at(0).toInt(), arr.at(1).toInt(), arr.at(2).toInt());
+        }
+    }
+    if (v.isString()) {
+        QColor c(v.toString());
+        if (c.isValid()) return c;
+    }
+    return fallback;
+}
+
+QJsonValue ConfigManager::colorToJson(const QColor &c)
+{
+    QJsonArray arr;
+    arr.append(c.red());
+    arr.append(c.green());
+    arr.append(c.blue());
+    return arr;
 }
 

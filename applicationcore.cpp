@@ -30,6 +30,7 @@ void ApplicationCore::initialize()
     cam1.open(1);
     cam0.setConfig(cfg.camera(0));
     cam1.setConfig(cfg.camera(1));
+    autoPump = cfg.config().autoPumpEnabled;
 
     connect(&cam0, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame0);
     connect(&cam1, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame1);
@@ -84,6 +85,7 @@ void ApplicationCore::toggleAutoExposure(int cameraId)
 void ApplicationCore::setAutoPumpEnabled(bool enabled)
 {
     autoPump = enabled;
+    cfg.setAutoPumpEnabled(enabled);
     emit message(enabled ? tr("Auto pump enabled") : tr("Auto pump disabled"));
 }
 
