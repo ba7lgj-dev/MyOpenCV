@@ -5,6 +5,7 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QPushButton>
+#include <QApplication>
 #include <QSerialPortInfo>
 #include <QSerialPort>
 
@@ -89,13 +90,20 @@ void PumpSettingsDialog::loadConfig()
 
 void PumpSettingsDialog::onTestPort()
 {
-    QSerialPort port(comboPort->currentText());
-    port.setBaudRate(QSerialPort::Baud9600);
-    if (port.open(QIODevice::ReadWrite)) {
-        labelStatus->setText(tr("串口可用"));
-        port.close();
+    if (!core) {
+        labelStatus->setText(tr("无法测试串口：核心未初始化"));
+        return;
+    }
+
+    const QString portName = comboPort->currentText();
+    const int duration = spinDuration->value();
+    labelStatus->setText(tr("正在测试 %1 ...").arg(portName));
+    QApplication::processEvents();
+
+    if (core->testPumpPulse(portName, duration)) {
+        labelStatus->setText(tr("已发送加气脉冲：端口 %1，低电平 %2 ms").arg(portName).arg(duration));
     } else {
-        labelStatus->setText(tr("串口不可用: %1").arg(port.errorString()));
+        labelStatus->setText(tr("串口不可用或触发失败"));
     }
 }
 

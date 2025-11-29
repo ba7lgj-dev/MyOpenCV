@@ -318,26 +318,20 @@
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
-   <widget class="QMenu" name="menuSettings">
-   <property name="title">
-    <string>系统设置</string>
-   </property>
    <addaction name="actionCameraManager"/>
    <addaction name="actionPumpSettings"/>
   </widget>
-  <addaction name="menuSettings"/>
- </widget>
- <action name="actionCameraManager">
-  <property name="text">
-   <string>摄像头管理</string>
-  </property>
- </action>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionCameraManager">
+   <property name="text">
+    <string>摄像头管理</string>
+   </property>
+  </action>
   <action name="actionPumpSettings">
    <property name="text">
     <string>自动加气配置</string>
    </property>
   </action>
-  <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <customwidgets>
   <customwidget>
