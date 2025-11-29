@@ -18,14 +18,14 @@ int main(int argc, char *argv[])
         ConfigManager cfg;
         cfg.load("config.json");
         PushManager push(&cfg);
-        push.sendException(QString::fromUtf8(ex.what()));
+        push.sendException(QStringLiteral("unhandled_exception"), QString::fromUtf8(ex.what()));
         return -1;
     } catch (...) {
         LogManager::instance().logError(QStringLiteral("未知异常"));
         ConfigManager cfg;
         cfg.load("config.json");
         PushManager push(&cfg);
-        push.sendException(QStringLiteral("系统异常：未知错误"));
+        push.sendException(QStringLiteral("unhandled_exception"), QStringLiteral("系统异常：未知错误"));
         return -1;
     }
 }

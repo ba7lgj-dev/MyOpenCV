@@ -7,7 +7,10 @@
 #include <QNetworkRequest>
 #include <QSslSocket>
 #include <QDebug>
+#include <QDateTime>
+#include <QRegularExpression>
 #include "configmanager.h"
+#include "alertratelimiter.h"
 
 class PushManager : public QObject
 {
@@ -19,9 +22,10 @@ public:
     void setConfig(const PushConfig &cfg);
     void sendStartup();
     void sendShutdown();
-    void sendException(const QString &errorMsg);
+    bool sendException(const QString &key, const QString &errorMsg);
     void sendPumpTriggered(int cameraId, double widthMm);
     bool sendCustomMessage(const QString &text, bool countFailure = true);
+    bool sendThrottled(const QString &key, const QString &text, bool countFailure = true);
 
 signals:
     void consecutiveFailuresExceeded(int count);
@@ -31,6 +35,9 @@ private:
     bool postMessage(const QString &text, bool countFailure = true);
     bool isEnabled() const;
     bool ensureSslAvailable();
+    QString ensureTimestamp(const QString &text, const QString &timestamp = QString()) const;
+    int throttleWindowMs() const;
+    QString timestampString(qint64 msSinceEpoch) const;
 
     ConfigManager *cfg {nullptr};
     PushConfig current;

@@ -37,7 +37,7 @@ private:
     bool prerequisitesReady() const;
     void startPump(int cameraId, double currentWidth);
     void finishSuccess(double width);
-    void handleAnomaly(const QString &reason);
+    void handleAnomaly(const QString &key, const QString &reason);
     void logTransition(const QString &action, double width, int cameraId = -1) const;
 
     IPumpController *pump {nullptr};

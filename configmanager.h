@@ -42,6 +42,7 @@ struct PushConfig {
     QString templateText;
     bool enabled {false};
     int maxFailures {3};
+    int throttleWindowMs {10000};
 };
 
 struct AppConfig {
