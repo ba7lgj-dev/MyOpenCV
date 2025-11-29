@@ -27,6 +27,7 @@ public:
     QChartView *trendChart();
     QList<int> availableCameraIndices(int maxIndex = 8) const;
     void reloadCamerasFromConfig();
+    void reloadPumpConfig();
     QString configPath() const { return defaultConfigPath; }
 
 signals:
@@ -51,6 +52,7 @@ private slots:
 private:
     void processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfg);
     void appendTrend(int id, double widthMM);
+    void applyPumpSettings();
 
     ConfigManager cfg;
     CalibrationManager calib{&cfg};
@@ -64,8 +66,10 @@ private:
     QLineSeries *series0 {nullptr};
     QLineSeries *series1 {nullptr};
     WidthResult lastResult[2];
+    int pumpTriggerCount[2] {0, 0};
     QString defaultConfigPath {"config.json"};
     bool running {false};
+    int pumpTriggerRequirement {3};
 };
 
 #endif // APPLICATIONCORE_H

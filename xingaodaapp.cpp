@@ -1,6 +1,7 @@
 #include "xingaodaapp.h"
 #include "ui_xingaodaapp.h"
 #include "cameramanagerdialog.h"
+#include "pumpsettingsdialog.h"
 #include <QPixmap>
 #include <QImage>
 #include <QDateTime>
@@ -8,6 +9,7 @@
 #include <QPainter>
 #include <QPen>
 #include <QtGlobal>
+#include <QDoubleSpinBox>
 
 xingaodaApp::xingaodaApp(QWidget *parent)
     : QMainWindow(parent)
@@ -19,6 +21,8 @@ xingaodaApp::xingaodaApp(QWidget *parent)
     core.initialize();
     syncCameraUi(0);
     syncCameraUi(1);
+    ui->chkAutoPump->setChecked(core.config()->config().autoPumpEnabled);
+    ui->spinPumpThreshold->setValue(core.config()->config().pumpThresholdMM);
 }
 
 xingaodaApp::~xingaodaApp()
@@ -46,6 +50,8 @@ void xingaodaApp::setupConnections()
     connect(ui->comboRotation0, qOverload<int>(&QComboBox::currentIndexChanged), this, &xingaodaApp::onRotation0);
     connect(ui->comboRotation1, qOverload<int>(&QComboBox::currentIndexChanged), this, &xingaodaApp::onRotation1);
     connect(ui->actionCameraManager, &QAction::triggered, this, &xingaodaApp::onCameraManager);
+    connect(ui->actionPumpSettings, &QAction::triggered, this, &xingaodaApp::onPumpSettings);
+    connect(ui->spinPumpThreshold, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &xingaodaApp::onPumpThresholdChanged);
 
     connect(&core, &ApplicationCore::cameraFrame, this, &xingaodaApp::onCameraFrame);
     connect(&core, &ApplicationCore::widthUpdated, this, &xingaodaApp::onWidthUpdated);
@@ -157,6 +163,12 @@ void xingaodaApp::onCameraManager()
     syncCameraUi(1);
 }
 
+void xingaodaApp::onPumpSettings()
+{
+    PumpSettingsDialog dlg(&core, this);
+    dlg.exec();
+}
+
 void xingaodaApp::onCameraFrame(int id, const QImage &img)
 {
     QImage overlay = drawOverlay(id, img);
@@ -196,6 +208,11 @@ void xingaodaApp::onSafety()
 {
     ui->chkAutoPump->setChecked(false);
     onMessage(tr("自动加气安全模式，已关闭自动加气"));
+}
+
+void xingaodaApp::onPumpThresholdChanged(double value)
+{
+    core.config()->setPumpThresholdMM(value);
 }
 
 void xingaodaApp::syncCameraUi(int id)

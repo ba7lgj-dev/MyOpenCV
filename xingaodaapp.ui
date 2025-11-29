@@ -210,6 +210,29 @@
         </property>
        </widget>
       </item>
+      <item row="0" column="3">
+       <widget class="QLabel" name="labelPumpThreshold">
+        <property name="text">
+         <string>加气阈值(mm)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="4">
+       <widget class="QDoubleSpinBox" name="spinPumpThreshold">
+        <property name="minimum">
+         <double>10.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>10000.000000000000000</double>
+        </property>
+        <property name="decimals">
+         <number>1</number>
+        </property>
+        <property name="singleStep">
+         <double>1.000000000000000</double>
+        </property>
+       </widget>
+      </item>
       <item row="1" column="0">
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
@@ -296,16 +319,22 @@
   </widget>
   <widget class="QMenuBar" name="menubar">
    <widget class="QMenu" name="menuSettings">
-    <property name="title">
-     <string>系统设置</string>
-    </property>
-    <addaction name="actionCameraManager"/>
-   </widget>
-   <addaction name="menuSettings"/>
+   <property name="title">
+    <string>系统设置</string>
+   </property>
+   <addaction name="actionCameraManager"/>
+   <addaction name="actionPumpSettings"/>
   </widget>
-  <action name="actionCameraManager">
+  <addaction name="menuSettings"/>
+ </widget>
+ <action name="actionCameraManager">
+  <property name="text">
+   <string>摄像头管理</string>
+  </property>
+ </action>
+  <action name="actionPumpSettings">
    <property name="text">
-    <string>摄像头管理</string>
+    <string>自动加气配置</string>
    </property>
   </action>
   <widget class="QStatusBar" name="statusbar"/>

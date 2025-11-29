@@ -1,6 +1,7 @@
 #include "configmanager.h"
 #include "logmanager.h"
 #include <QMutexLocker>
+#include <QtGlobal>
 
 ConfigManager::ConfigManager(QObject *parent)
     : QObject(parent)
@@ -59,6 +60,58 @@ void ConfigManager::setAutoPumpEnabled(bool enabled)
     {
         QMutexLocker locker(&mutex);
         appConfig.autoPumpEnabled = enabled;
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
+void ConfigManager::setPumpPort(const QString &port)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.pumpPort = port;
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
+void ConfigManager::setPumpDurationMs(int ms)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.pumpDurationMs = qBound(50, ms, 20000);
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
+void ConfigManager::setPumpThresholdMM(double mm)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.pumpThresholdMM = qBound(10.0, mm, 10000.0);
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
+void ConfigManager::setPumpCooldownMs(int ms)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.pumpCooldownMs = qBound(0, ms, 600000);
         savedPath = lastPath;
     }
     if (!savedPath.isEmpty()) {

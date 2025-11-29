@@ -2,6 +2,7 @@
 #include "logmanager.h"
 #include <QDateTime>
 #include <QThread>
+#include <algorithm>
 
 Cp2102PumpController::Cp2102PumpController(QObject *parent)
     : IPumpController(parent)
@@ -51,6 +52,12 @@ void Cp2102PumpController::forceHigh()
     if (!serial.isOpen()) return;
     serial.setDataTerminalReady(true);
     serial.setRequestToSend(true);
+}
+
+void Cp2102PumpController::setSafetyLimits(int maxEvents, int windowMs)
+{
+    safetyMaxEvents = std::max(1, maxEvents);
+    safetyWindowMs = std::max(windowMs, 1000);
 }
 
 void Cp2102PumpController::pushEvent(int ms)
