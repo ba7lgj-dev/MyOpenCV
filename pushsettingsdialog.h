@@ -31,6 +31,7 @@ private:
     QLineEdit *editUrl {nullptr};
     QCheckBox *chkEnabled {nullptr};
     QSpinBox *spinMaxFailures {nullptr};
+    QSpinBox *spinThrottleSeconds {nullptr};
     QLabel *labelStatus {nullptr};
 };
 

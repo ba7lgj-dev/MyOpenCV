@@ -1,5 +1,6 @@
 #include "autopumpcontroller.h"
 #include "logmanager.h"
+#include "alertratelimiter.h"
 #include <QDateTime>
 #include <QtGlobal>
 
@@ -56,7 +57,7 @@ void AutoPumpController::handleWidthSample(int cameraId, double widthMm, bool fr
     }
 
     if (!frameStable) {
-        handleAnomaly(tr("camera stream unstable"));
+        handleAnomaly(QStringLiteral("camera_stream_unstable"), tr("camera stream unstable"));
         return;
     }
 
@@ -77,7 +78,7 @@ void AutoPumpController::handleWidthSample(int cameraId, double widthMm, bool fr
             if (prerequisitesReady()) {
                 startPump(cameraId, widthMm);
             } else {
-                changeState(State::Error, tr("prerequisites not met"));
+                handleAnomaly(QStringLiteral("pump_prerequisites_not_met"), tr("prerequisites not met"));
             }
         }
         break;
@@ -91,7 +92,7 @@ void AutoPumpController::handleWidthSample(int cameraId, double widthMm, bool fr
         const double delta = widthMm - pumpStartWidth;
         if (now - phaseStart >= monitorMs) {
             if (delta < minInflation) {
-                handleAnomaly(tr("insufficient inflation observed"));
+                handleAnomaly(QStringLiteral("insufficient_inflation"), tr("insufficient inflation observed"));
             } else {
                 finishSuccess(widthMm);
             }
@@ -118,7 +119,7 @@ void AutoPumpController::startPump(int cameraId, double currentWidth)
     changeState(State::Pumping, tr("start pump"));
 
     if (!pump->pulseLow(pulseMs)) {
-        handleAnomaly(tr("pump pulse failed: %1").arg(pump->lastError()));
+        handleAnomaly(QStringLiteral("pump_pulse_failed"), tr("pump pulse failed: %1").arg(pump->lastError()));
         return;
     }
     lastPumpTime = timer.elapsed();
@@ -138,13 +139,21 @@ void AutoPumpController::finishSuccess(double width)
     phaseStart = timer.elapsed();
 }
 
-void AutoPumpController::handleAnomaly(const QString &reason)
+void AutoPumpController::handleAnomaly(const QString &key, const QString &reason)
 {
     const QString msg = tr("Auto pump anomaly: %1").arg(reason);
     LogManager::instance().logError(msg);
-    emit statusMessage(msg);
-    if (push) {
-        push->sendException(msg);
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    const int windowMs = cfg ? cfg->pushConfig().throttleWindowMs : 10000;
+    const bool allowed = AlertRateLimiter::instance().shouldAllow(key, windowMs, nowMs);
+    if (allowed) {
+        emit statusMessage(msg);
+        if (push) {
+            push->sendException(key, msg);
+        }
+    } else {
+        const QString skipped = tr("异常重复，已限流：%1").arg(key);
+        LogManager::instance().logInfo(skipped);
     }
     changeState(State::Error, reason);
     phaseStart = timer.elapsed();
