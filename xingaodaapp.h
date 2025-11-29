@@ -50,10 +50,10 @@ private slots:
     void onSafety();
     void onPumpThresholdChanged(double value);
     void onPumpStopThresholdChanged(double value);
-    void onPumpDurationChanged(int value);
-    void onPumpPrecheckChanged(int value);
-    void onPumpMonitorChanged(int value);
-    void onPumpCooldownChanged(int value);
+    void onPumpDurationChanged(double value);
+    void onPumpPrecheckChanged(double value);
+    void onPumpMonitorChanged(double value);
+    void onPumpCooldownChanged(double value);
     void onPumpMinInflationChanged(double value);
     void onPumpPortChanged(const QString &port);
     void onPushStatusChanged(int failures);
@@ -71,7 +71,7 @@ private:
     void syncPumpUi();
     void syncPushUi();
     void populatePumpPorts();
-    void updateFusionLabels(double fusedMm);
+    void updateFusionLabels(double fusedCm);
     void applyLineRatio(int id, int value);
 
     Ui::xingaodaApp *ui;

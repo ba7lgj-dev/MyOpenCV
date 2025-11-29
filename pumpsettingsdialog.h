@@ -29,10 +29,10 @@ private:
     ConfigManager *cfg {nullptr};
 
     QComboBox *comboPort {nullptr};
-    QSpinBox *spinDuration {nullptr};
-    QSpinBox *spinPrecheck {nullptr};
-    QSpinBox *spinMonitor {nullptr};
-    QSpinBox *spinCooldown {nullptr};
+    QDoubleSpinBox *spinDuration {nullptr};
+    QDoubleSpinBox *spinPrecheck {nullptr};
+    QDoubleSpinBox *spinMonitor {nullptr};
+    QDoubleSpinBox *spinCooldown {nullptr};
     QDoubleSpinBox *spinStartThreshold {nullptr};
     QDoubleSpinBox *spinStopThreshold {nullptr};
     QDoubleSpinBox *spinMinInflation {nullptr};
