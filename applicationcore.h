@@ -33,10 +33,15 @@ public:
     void reloadPumpConfig();
     QString configPath() const { return defaultConfigPath; }
     bool testPumpPulse(const QString &portName, int pulseMs);
+    bool applyCameraSelection(int id, int index, bool enabled);
+    bool calibrateAllCameras(double realWidthMm, QString &errorMessage);
+    double fusedWidthMM() const { return fusedWidth; }
+    WidthResult lastWidthResult(int id) const { return lastResult[id]; }
 
 signals:
     void cameraFrame(int id, const QImage &img);
     void widthUpdated(int id, const WidthResult &result);
+    void fusedWidthUpdated(double fusedMm, double cam0Mm, double cam1Mm);
     void message(const QString &msg);
     void safetyModeEnabled();
 
@@ -52,6 +57,9 @@ private slots:
     void onFrame1(const cv::Mat &frame);
     void handleWidth(int id, const cv::Mat &frame);
     void onPumpSafety(const QString &msg);
+    void updateFusion(int latestId);
+    double calculateFusion(const QList<double> &values) const;
+    int chooseFusionCameraId() const;
 
 private:
     void processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfg);
@@ -72,6 +80,9 @@ private:
     QLineSeries *series0 {nullptr};
     QLineSeries *series1 {nullptr};
     WidthResult lastResult[2];
+    bool cameraReady[2] {false, false};
+    double fusedWidth {0.0};
+    bool fusedValid {false};
     QString defaultConfigPath {"config.json"};
     bool running {false};
     int pumpTriggerRequirement {3};

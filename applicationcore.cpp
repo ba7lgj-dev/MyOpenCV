@@ -1,6 +1,8 @@
 #include "applicationcore.h"
 #include <QDateTime>
 #include <QtGlobal>
+#include <algorithm>
+#include <opencv2/opencv.hpp>
 
 ApplicationCore::ApplicationCore(QObject *parent)
     : QObject(parent)
@@ -44,10 +46,14 @@ void ApplicationCore::initialize()
     if (push) {
         push->reloadConfig();
     }
-    cam0.open(cfg.camera(0).index);
-    cam1.open(cfg.camera(1).index);
-    cam0.setConfig(cfg.camera(0));
-    cam1.setConfig(cfg.camera(1));
+    if (cfg.camera(0).enabled && cfg.camera(0).index >= 0) {
+        cam0.open(cfg.camera(0).index);
+        cam0.setConfig(cfg.camera(0));
+    }
+    if (cfg.camera(1).enabled && cfg.camera(1).index >= 0) {
+        cam1.open(cfg.camera(1).index);
+        cam1.setConfig(cfg.camera(1));
+    }
     autoPump = cfg.config().autoPumpEnabled;
     applyPumpSettings();
     if (autoPumpController) {
@@ -56,8 +62,8 @@ void ApplicationCore::initialize()
 
     connect(&cam0, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame0);
     connect(&cam1, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame1);
-    connect(&cam0, &UsbCamera::frameReady, [this](const QImage &img){ emit cameraFrame(0, img);});
-    connect(&cam1, &UsbCamera::frameReady, [this](const QImage &img){ emit cameraFrame(1, img);});
+    connect(&cam0, &UsbCamera::frameReady, [this](const QImage &img){ cameraReady[0] = true; emit cameraFrame(0, img);});
+    connect(&cam1, &UsbCamera::frameReady, [this](const QImage &img){ cameraReady[1] = true; emit cameraFrame(1, img);});
     connect(&cam0, &UsbCamera::cameraError, this, [this](const QString &msg){ emit message(msg); LogManager::instance().logWarn(msg);});
     connect(&cam1, &UsbCamera::cameraError, this, [this](const QString &msg){ emit message(msg); LogManager::instance().logWarn(msg);});
 }
@@ -85,8 +91,12 @@ PushManager *ApplicationCore::pushManager()
 void ApplicationCore::startCameras()
 {
     running = true;
-    cam0.start();
-    if (cfg.config().dualCameraMode) {
+    cameraReady[0] = false;
+    cameraReady[1] = false;
+    if (cfg.camera(0).enabled && cfg.camera(0).index >= 0) {
+        cam0.start();
+    }
+    if (cfg.config().dualCameraMode && cfg.camera(1).enabled && cfg.camera(1).index >= 0) {
         cam1.start();
     }
     if (!cfg.config().pumpPort.isEmpty()) {
@@ -144,7 +154,7 @@ void ApplicationCore::handleWidth(int id, const cv::Mat &frame)
     calib.addCalibrationSample(id, r.widthMM, r.widthPixels); // keep smoothing
     appendTrend(id, r.widthMM);
     emit widthUpdated(id, r);
-    processPumpLogic(id, r, cfgCam);
+    updateFusion(id);
     LogManager::instance().logInfo(QString("Camera%1 width=%2px, %3mm").arg(id).arg(r.widthPixels).arg(r.widthMM));
 }
 
@@ -167,10 +177,14 @@ void ApplicationCore::reloadCamerasFromConfig()
     stopCameras();
     cam0.close();
     cam1.close();
-    cam0.open(cfg.camera(0).index);
-    cam1.open(cfg.camera(1).index);
-    cam0.setConfig(cfg.camera(0));
-    cam1.setConfig(cfg.camera(1));
+    if (cfg.camera(0).enabled && cfg.camera(0).index >= 0) {
+        cam0.open(cfg.camera(0).index);
+        cam0.setConfig(cfg.camera(0));
+    }
+    if (cfg.camera(1).enabled && cfg.camera(1).index >= 0) {
+        cam1.open(cfg.camera(1).index);
+        cam1.setConfig(cfg.camera(1));
+    }
     if (wasRunning) {
         startCameras();
     }
@@ -214,14 +228,99 @@ bool ApplicationCore::testPumpPulse(const QString &portName, int pulseMs)
     return true;
 }
 
+bool ApplicationCore::applyCameraSelection(int id, int index, bool enabled)
+{
+    CameraConfig camCfg = cfg.camera(id);
+    camCfg.index = index;
+    camCfg.enabled = enabled;
+    cfg.setCameraConfig(id, camCfg);
+
+    bool ok = true;
+    if (enabled && index >= 0) {
+        cv::VideoCapture test(index);
+        ok = test.isOpened();
+    }
+    reloadCamerasFromConfig();
+    return ok;
+}
+
+bool ApplicationCore::calibrateAllCameras(double realWidthMm, QString &errorMessage)
+{
+    QList<int> calibrated;
+    for (int i = 0; i < 2; ++i) {
+        if (lastResult[i].valid && lastResult[i].widthPixels > 0.0) {
+            CameraConfig cfgCam = cfg.camera(i);
+            cfgCam.mmPerPixel = realWidthMm / lastResult[i].widthPixels;
+            cfg.setCameraConfig(i, cfgCam);
+            calibrated.append(i);
+        }
+    }
+    if (calibrated.isEmpty()) {
+        errorMessage = tr("摄像头未就绪，无法校准宽度");
+        return false;
+    }
+    reloadCamerasFromConfig();
+    return true;
+}
+
 void ApplicationCore::processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfgCam)
 {
+    Q_UNUSED(id)
+    Q_UNUSED(result)
     Q_UNUSED(cfgCam)
-    if (!autoPumpController) return;
-    const bool frameStable = true;
-    QMetaObject::invokeMethod(autoPumpController,
-                              [this, id, result, frameStable]() { autoPumpController->handleWidthSample(id, result.widthMM, frameStable); },
-                              Qt::QueuedConnection);
+}
+
+void ApplicationCore::updateFusion(int latestId)
+{
+    Q_UNUSED(latestId)
+    QList<double> values;
+    if (lastResult[0].valid) {
+        values.append(lastResult[0].widthMM);
+    }
+    if (lastResult[1].valid) {
+        values.append(lastResult[1].widthMM);
+    }
+    fusedValid = !values.isEmpty();
+    if (fusedValid) {
+        fusedWidth = calculateFusion(values);
+    } else {
+        fusedWidth = 0.0;
+    }
+    emit fusedWidthUpdated(fusedValid ? fusedWidth : 0.0,
+                          lastResult[0].valid ? lastResult[0].widthMM : 0.0,
+                          lastResult[1].valid ? lastResult[1].widthMM : 0.0);
+
+    if (autoPumpController && fusedValid) {
+        const int camId = chooseFusionCameraId();
+        QMetaObject::invokeMethod(autoPumpController,
+                                  [this, camId]() { autoPumpController->handleWidthSample(camId, fusedWidth, true); },
+                                  Qt::QueuedConnection);
+    }
+}
+
+double ApplicationCore::calculateFusion(const QList<double> &values) const
+{
+    if (values.isEmpty()) return 0.0;
+    const QString strategy = cfg.config().fusionStrategy.toLower();
+    if (strategy == QLatin1String("min")) {
+        return *std::min_element(values.begin(), values.end());
+    }
+    if (strategy == QLatin1String("max")) {
+        return *std::max_element(values.begin(), values.end());
+    }
+    double sum = 0.0;
+    for (double v : values) sum += v;
+    return sum / values.size();
+}
+
+int ApplicationCore::chooseFusionCameraId() const
+{
+    if (lastResult[0].valid && lastResult[1].valid) {
+        return lastResult[0].widthMM <= lastResult[1].widthMM ? 0 : 1;
+    }
+    if (lastResult[0].valid) return 0;
+    if (lastResult[1].valid) return 1;
+    return 0;
 }
 
 void ApplicationCore::appendTrend(int id, double widthMM)

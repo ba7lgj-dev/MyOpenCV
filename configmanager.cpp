@@ -161,6 +161,19 @@ void ConfigManager::setAutoCooldownMs(int ms)
     }
 }
 
+void ConfigManager::setFusionStrategy(const QString &strategy)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.fusionStrategy = strategy;
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
 void ConfigManager::setMinInflationMM(double mm)
 {
     QString savedPath;
@@ -232,7 +245,9 @@ void ConfigManager::restoreDefaults()
     QMutexLocker locker(&mutex);
     appConfig = AppConfig();
     appConfig.cameras[0].index = 0;
+    appConfig.cameras[0].enabled = true;
     appConfig.cameras[1].index = 1;
+    appConfig.cameras[1].enabled = true;
     appConfig.cameras[0].name = tr("Left Camera");
     appConfig.cameras[1].name = tr("Right Camera");
 }
@@ -254,6 +269,7 @@ void ConfigManager::fromJson(const QJsonObject &obj)
     appConfig.safetyMaxEvents = obj.value("safetyMaxEvents").toInt(appConfig.safetyMaxEvents);
     appConfig.safetyWindowMs = obj.value("safetyWindowMs").toInt(appConfig.safetyWindowMs);
     appConfig.dualCameraMode = obj.value("dualCameraMode").toBool(appConfig.dualCameraMode);
+    appConfig.fusionStrategy = obj.value("fusionStrategy").toString(appConfig.fusionStrategy);
 
     if (obj.contains("cameras") && obj.value("cameras").isArray()) {
         QJsonArray arr = obj.value("cameras").toArray();
@@ -261,6 +277,7 @@ void ConfigManager::fromJson(const QJsonObject &obj)
             QJsonObject c = arr.at(i).toObject();
             CameraConfig cfg;
             cfg.index = c.value("index").toInt(i);
+            cfg.enabled = c.value("enabled").toBool(true);
             cfg.name = c.value("name").toString();
             cfg.lineRatio = c.value("lineRatio").toDouble(0.5);
             cfg.lineHeightPx = c.value("lineHeightPx").toInt(0);
@@ -314,12 +331,14 @@ QJsonObject ConfigManager::toJson() const
     obj.insert("safetyMaxEvents", appConfig.safetyMaxEvents);
     obj.insert("safetyWindowMs", appConfig.safetyWindowMs);
     obj.insert("dualCameraMode", appConfig.dualCameraMode);
+    obj.insert("fusionStrategy", appConfig.fusionStrategy);
 
     QJsonArray arr;
     for (int i = 0; i < 2; ++i) {
         const auto &cfg = appConfig.cameras[i];
         QJsonObject c;
         c.insert("index", cfg.index);
+        c.insert("enabled", cfg.enabled);
         c.insert("name", cfg.name);
         c.insert("lineRatio", cfg.lineRatio);
         c.insert("lineHeightPx", cfg.lineHeightPx);

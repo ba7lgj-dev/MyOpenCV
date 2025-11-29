@@ -6,66 +6,93 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1200</width>
-    <height>800</height>
+    <width>1360</width>
+    <height>900</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>双摄膜宽监控</string>
+   <string>双摄融合宽度监控</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout">
+   <layout class="QVBoxLayout" name="mainLayout">
     <item>
-     <layout class="QHBoxLayout" name="videoLayout">
+     <layout class="QHBoxLayout" name="layoutTop">
       <item>
        <widget class="QGroupBox" name="groupCam0">
         <property name="title">
-         <string>Camera 0</string>
+         <string>摄像头0</string>
         </property>
-        <layout class="QVBoxLayout" name="verticalLayout_2">
+        <layout class="QVBoxLayout" name="verticalLayout_cam0">
          <item>
           <widget class="QLabel" name="labelCam0">
            <property name="minimumSize">
             <size>
-             <width>400</width>
-             <height>250</height>
+             <width>480</width>
+             <height>320</height>
             </size>
            </property>
            <property name="frameShape">
             <enum>QFrame::Box</enum>
            </property>
-           <property name="text">
-            <string>Camera 0 Preview</string>
-           </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
            </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="labelWidth0">
            <property name="text">
-            <string>Width: --</string>
+            <string>Camera 0</string>
            </property>
           </widget>
          </item>
-        <item>
-         <widget class="QLabel" name="labelStatus0">
-          <property name="text">
-           <string>Status: Idle</string>
-          </property>
-         </widget>
-        </item>
          <item>
-          <layout class="QHBoxLayout" name="layoutCam0Controls">
-           <item>
-            <widget class="QLabel" name="labelLine0">
+          <layout class="QGridLayout" name="gridCam0">
+           <item row="0" column="0">
+            <widget class="QLabel" name="labelCam0Index">
              <property name="text">
-              <string>检测线(%)</string>
+              <string>摄像头接口</string>
              </property>
             </widget>
            </item>
-           <item>
+           <item row="0" column="1" colspan="2">
+            <widget class="QComboBox" name="comboCamera0"/>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="labelCam0Flip">
+             <property name="text">
+              <string>画面方向</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QCheckBox" name="chkFlipH0">
+             <property name="text">
+              <string>水平翻转</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="2">
+            <widget class="QCheckBox" name="chkFlipV0">
+             <property name="text">
+              <string>垂直翻转</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="labelRotation0">
+             <property name="text">
+              <string>旋转角度</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1" colspan="2">
+            <widget class="QComboBox" name="comboRotation0"/>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="labelLine0">
+             <property name="text">
+              <string>检测线位置(%)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
             <widget class="QSlider" name="sliderLine0">
              <property name="maximum">100</property>
              <property name="orientation">
@@ -73,7 +100,23 @@
              </property>
             </widget>
            </item>
-           <item>
+           <item row="3" column="2">
+            <widget class="QSpinBox" name="spinLine0">
+             <property name="minimum">0</property>
+             <property name="maximum">100</property>
+             <property name="suffix">
+              <string>%</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <widget class="QLabel" name="labelBand0">
+             <property name="text">
+              <string>检测线高度(px)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="1">
             <widget class="QSpinBox" name="spinBand0">
              <property name="maximum">500</property>
              <property name="suffix">
@@ -81,75 +124,108 @@
              </property>
             </widget>
            </item>
-           <item>
+           <item row="4" column="2">
             <widget class="QPushButton" name="btnColor0">
              <property name="text">
-              <string>颜色</string>
+              <string>线条颜色</string>
              </property>
             </widget>
            </item>
-           <item>
-            <widget class="QComboBox" name="comboRotation0">
-             <item><property name="text"><string>0°</string></property></item>
-             <item><property name="text"><string>90°</string></property></item>
-             <item><property name="text"><string>180°</string></property></item>
-             <item><property name="text"><string>270°</string></property></item>
+           <item row="5" column="0">
+            <widget class="QLabel" name="labelAutoExp0">
+             <property name="text">
+              <string>曝光调节</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="1" colspan="2">
+            <widget class="QPushButton" name="btnAutoExp0">
+             <property name="text">
+              <string>自动曝光</string>
+             </property>
             </widget>
            </item>
           </layout>
          </item>
-       </layout>
-      </widget>
-     </item>
+        </layout>
+       </widget>
+      </item>
       <item>
        <widget class="QGroupBox" name="groupCam1">
         <property name="title">
-         <string>Camera 1</string>
+         <string>摄像头1</string>
         </property>
-        <layout class="QVBoxLayout" name="verticalLayout_3">
+        <layout class="QVBoxLayout" name="verticalLayout_cam1">
          <item>
           <widget class="QLabel" name="labelCam1">
            <property name="minimumSize">
             <size>
-             <width>400</width>
-             <height>250</height>
+             <width>480</width>
+             <height>320</height>
             </size>
            </property>
            <property name="frameShape">
             <enum>QFrame::Box</enum>
            </property>
-           <property name="text">
-            <string>Camera 1 Preview</string>
-           </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
            </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="labelWidth1">
            <property name="text">
-            <string>Width: --</string>
+            <string>Camera 1</string>
            </property>
           </widget>
          </item>
          <item>
-         <widget class="QLabel" name="labelStatus1">
-          <property name="text">
-           <string>Status: Idle</string>
-          </property>
-         </widget>
-        </item>
-         <item>
-          <layout class="QHBoxLayout" name="layoutCam1Controls">
-           <item>
-            <widget class="QLabel" name="labelLine1">
+          <layout class="QGridLayout" name="gridCam1">
+           <item row="0" column="0">
+            <widget class="QLabel" name="labelCam1Index">
              <property name="text">
-              <string>检测线(%)</string>
+              <string>摄像头接口</string>
              </property>
             </widget>
            </item>
-           <item>
+           <item row="0" column="1" colspan="2">
+            <widget class="QComboBox" name="comboCamera1"/>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="labelCam1Flip">
+             <property name="text">
+              <string>画面方向</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QCheckBox" name="chkFlipH1">
+             <property name="text">
+              <string>水平翻转</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="2">
+            <widget class="QCheckBox" name="chkFlipV1">
+             <property name="text">
+              <string>垂直翻转</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="labelRotation1">
+             <property name="text">
+              <string>旋转角度</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1" colspan="2">
+            <widget class="QComboBox" name="comboRotation1"/>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="labelLine1">
+             <property name="text">
+              <string>检测线位置(%)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
             <widget class="QSlider" name="sliderLine1">
              <property name="maximum">100</property>
              <property name="orientation">
@@ -157,7 +233,23 @@
              </property>
             </widget>
            </item>
-           <item>
+           <item row="3" column="2">
+            <widget class="QSpinBox" name="spinLine1">
+             <property name="minimum">0</property>
+             <property name="maximum">100</property>
+             <property name="suffix">
+              <string>%</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <widget class="QLabel" name="labelBand1">
+             <property name="text">
+              <string>检测线高度(px)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="1">
             <widget class="QSpinBox" name="spinBand1">
              <property name="maximum">500</property>
              <property name="suffix">
@@ -165,143 +257,351 @@
              </property>
             </widget>
            </item>
-           <item>
+           <item row="4" column="2">
             <widget class="QPushButton" name="btnColor1">
              <property name="text">
-              <string>颜色</string>
+              <string>线条颜色</string>
              </property>
             </widget>
            </item>
-           <item>
-            <widget class="QComboBox" name="comboRotation1">
-             <item><property name="text"><string>0°</string></property></item>
-             <item><property name="text"><string>90°</string></property></item>
-             <item><property name="text"><string>180°</string></property></item>
-             <item><property name="text"><string>270°</string></property></item>
+           <item row="5" column="0">
+            <widget class="QLabel" name="labelAutoExp1">
+             <property name="text">
+              <string>曝光调节</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="1" colspan="2">
+            <widget class="QPushButton" name="btnAutoExp1">
+             <property name="text">
+              <string>自动曝光</string>
+             </property>
             </widget>
            </item>
           </layout>
          </item>
-       </layout>
-      </widget>
-     </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="groupFusion">
+        <property name="title">
+         <string>融合宽度</string>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_fusion">
+         <item>
+          <layout class="QFormLayout" name="formFusion">
+           <item row="0" column="0">
+            <widget class="QLabel" name="labelCam0Width">
+             <property name="text">
+              <string>摄像头0宽度(mm)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QLabel" name="labelCam0WidthValue">
+             <property name="text">
+              <string>--</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="labelCam1Width">
+             <property name="text">
+              <string>摄像头1宽度(mm)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLabel" name="labelCam1WidthValue">
+             <property name="text">
+              <string>--</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="labelFusionMode">
+             <property name="text">
+              <string>融合方式</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QComboBox" name="comboFusionStrategy">
+             <item><property name="text"><string>平均</string></property></item>
+             <item><property name="text"><string>最小值</string></property></item>
+             <item><property name="text"><string>最大值</string></property></item>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QLabel" name="labelFusionValue">
+           <property name="minimumHeight">
+            <number>120</number>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">font-size: 36px; font-weight: bold; color: #d32f2f;</string>
+           </property>
+           <property name="text">
+            <string>融合宽度 -- mm</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
      </layout>
     </item>
     <item>
-     <layout class="QGridLayout" name="gridLayout">
-      <item row="0" column="0">
+     <layout class="QHBoxLayout" name="layoutCalibration">
+      <item>
+       <widget class="QGroupBox" name="groupCalibration">
+        <property name="title">
+         <string>宽度校准</string>
+        </property>
+        <layout class="QGridLayout" name="gridCalibration">
+         <item row="0" column="0">
+          <widget class="QLabel" name="labelRealWidth">
+           <property name="text">
+            <string>当前物料真实宽度(mm)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QDoubleSpinBox" name="spinRealWidth">
+           <property name="maximum">
+            <double>10000.000000000000000</double>
+           </property>
+           <property name="value">
+            <double>800.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QPushButton" name="btnCalibrateAll">
+           <property name="text">
+            <string>宽度校准</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0" colspan="3">
+          <widget class="QLabel" name="labelCalibrationInfo">
+           <property name="text">
+            <string>输入一次即可同步所有摄像头 mm/px</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="groupPump">
+        <property name="title">
+         <string>自动加气配置</string>
+        </property>
+        <layout class="QGridLayout" name="gridPump">
+         <item row="0" column="0">
+          <widget class="QCheckBox" name="chkAutoPump">
+           <property name="text">
+            <string>自动加气</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="labelPumpPort">
+           <property name="text">
+            <string>加气串口</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QComboBox" name="comboPumpPort"/>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="labelPumpDuration">
+           <property name="text">
+            <string>加气时长(ms)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QSpinBox" name="spinPumpDuration">
+           <property name="minimum">50</property>
+           <property name="maximum">20000</property>
+          </widget>
+         </item>
+         <item row="1" column="2">
+          <widget class="QLabel" name="labelPumpThreshold">
+           <property name="text">
+            <string>启动阈值(mm)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="3">
+          <widget class="QDoubleSpinBox" name="spinPumpThreshold">
+           <property name="minimum">
+            <double>10.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>20000.000000000000000</double>
+           </property>
+           <property name="decimals">
+            <number>1</number>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="labelPumpStop">
+           <property name="text">
+            <string>停止阈值(mm)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QDoubleSpinBox" name="spinPumpStopThreshold">
+           <property name="minimum">
+            <double>10.000000000000000</double>
+           </property>
+           <property name="maximum">
+            <double>20000.000000000000000</double>
+           </property>
+           <property name="decimals">
+            <number>1</number>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="2">
+          <widget class="QLabel" name="labelPrecheck">
+           <property name="text">
+            <string>宽度预判时间(ms)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="3">
+          <widget class="QSpinBox" name="spinPrecheck">
+           <property name="minimum">1000</property>
+           <property name="maximum">60000</property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="labelMonitor">
+           <property name="text">
+            <string>监控时间(ms)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QSpinBox" name="spinMonitor">
+           <property name="minimum">1000</property>
+           <property name="maximum">10000</property>
+          </widget>
+         </item>
+         <item row="3" column="2">
+          <widget class="QLabel" name="labelCooldown">
+           <property name="text">
+            <string>冷却时间(ms)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="3">
+          <widget class="QSpinBox" name="spinCooldown">
+           <property name="maximum">600000</property>
+          </widget>
+         </item>
+         <item row="4" column="0">
+          <widget class="QLabel" name="labelMinInflation">
+           <property name="text">
+            <string>最小膨胀(mm)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
+          <widget class="QDoubleSpinBox" name="spinMinInflation">
+           <property name="maximum">
+            <double>5000.000000000000000</double>
+           </property>
+           <property name="decimals">
+            <number>1</number>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="groupPush">
+        <property name="title">
+         <string>推送配置</string>
+        </property>
+        <layout class="QGridLayout" name="gridPush">
+         <item row="0" column="0">
+          <widget class="QCheckBox" name="chkPushEnabled">
+           <property name="text">
+            <string>启用推送</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="labelWebhook">
+           <property name="text">
+            <string>Webhook 地址</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QLineEdit" name="editWebhook"/>
+         </item>
+         <item row="0" column="3">
+          <widget class="QPushButton" name="btnTestPush">
+           <property name="text">
+            <string>测试推送</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0" colspan="4">
+          <widget class="QLabel" name="labelPushStatus">
+           <property name="text">
+            <string>推送通道状态未知</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="layoutControls">
+      <item>
        <widget class="QPushButton" name="btnStart">
         <property name="text">
          <string>启动采集</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="1">
+      <item>
        <widget class="QPushButton" name="btnStop">
         <property name="text">
          <string>停止采集</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="2">
-       <widget class="QCheckBox" name="chkAutoPump">
-        <property name="text">
-         <string>自动加气</string>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
         </property>
-       </widget>
-      </item>
-      <item row="0" column="3">
-       <widget class="QLabel" name="labelPumpThreshold">
-        <property name="text">
-         <string>启动加气阈值(mm)</string>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
         </property>
-       </widget>
-      </item>
-      <item row="0" column="4">
-       <widget class="QDoubleSpinBox" name="spinPumpThreshold">
-        <property name="minimum">
-         <double>10.000000000000000</double>
-        </property>
-        <property name="maximum">
-         <double>10000.000000000000000</double>
-        </property>
-        <property name="decimals">
-         <number>1</number>
-        </property>
-        <property name="singleStep">
-         <double>1.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <layout class="QHBoxLayout" name="horizontalLayout">
-        <item>
-         <widget class="QLabel" name="labelRealWidth0">
-          <property name="text">
-           <string>实际宽度(0)</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QDoubleSpinBox" name="spinReal0">
-          <property name="maximum">
-           <double>5000.0</double>
-          </property>
-          <property name="value">
-           <double>800.0</double>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="btnCalib0">
-          <property name="text">
-           <string>校准0</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="btnAutoExp0">
-          <property name="text">
-           <string>自动曝光0</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item row="2" column="0">
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
-        <item>
-         <widget class="QLabel" name="labelRealWidth1">
-          <property name="text">
-           <string>实际宽度(1)</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QDoubleSpinBox" name="spinReal1">
-          <property name="maximum">
-           <double>5000.0</double>
-          </property>
-          <property name="value">
-           <double>800.0</double>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="btnCalib1">
-          <property name="text">
-           <string>校准1</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="btnAutoExp1">
-          <property name="text">
-           <string>自动曝光1</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
+       </spacer>
       </item>
      </layout>
     </item>
@@ -317,27 +617,8 @@
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menubar">
-   <addaction name="actionCameraManager"/>
-   <addaction name="actionPumpSettings"/>
-   <addaction name="actionPushSettings"/>
-  </widget>
+  <widget class="QMenuBar" name="menubar"/>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="actionCameraManager">
-   <property name="text">
-    <string>摄像头管理</string>
-   </property>
-  </action>
-  <action name="actionPumpSettings">
-   <property name="text">
-    <string>自动加气配置</string>
-   </property>
-  </action>
-  <action name="actionPushSettings">
-   <property name="text">
-    <string>推送配置</string>
-   </property>
-  </action>
  </widget>
  <customwidgets>
   <customwidget>
