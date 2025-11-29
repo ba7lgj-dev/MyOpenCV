@@ -12,6 +12,7 @@
 
 struct CameraConfig {
     int index {0};
+    bool enabled {true};
     QString name;
     double lineRatio {0.5};
     int lineHeightPx {0};
@@ -44,6 +45,7 @@ struct PushConfig {
 };
 
 struct AppConfig {
+    QString fusionStrategy {"average"};
     QString pumpPort;
     int pumpDurationMs {600};
     double autoStartThresholdMM {1000};
@@ -79,6 +81,7 @@ public:
     void setAutoCooldownMs(int ms);
     void setMinInflationMM(double mm);
     void setDualCameraMode(bool enabled);
+    void setFusionStrategy(const QString &strategy);
     void restoreDefaults();
     CameraConfig camera(int idx) const;
     void setCameraConfig(int idx, const CameraConfig &cfg);
