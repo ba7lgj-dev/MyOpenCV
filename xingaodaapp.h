@@ -43,6 +43,7 @@ private slots:
     void onPumpThresholdChanged(double value);
 
 private:
+    void setupRotationCombos();
     void setupConnections();
     void updateWidthLabel(int id, const WidthResult &result);
     void syncCameraUi(int id);
