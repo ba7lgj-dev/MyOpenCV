@@ -2,6 +2,8 @@
 #include "logmanager.h"
 #include <QMutexLocker>
 #include <QtGlobal>
+#include <algorithm>
+#include <QFileInfo>
 
 ConfigManager::ConfigManager(QObject *parent)
     : QObject(parent)
@@ -25,6 +27,7 @@ bool ConfigManager::load(const QString &path)
         fromJson(doc.object());
         lastPath = path;
     }
+    loadPushOverride();
     emit configReloaded();
     return true;
 }
@@ -37,6 +40,7 @@ bool ConfigManager::save(const QString &path) const
     QJsonDocument doc(toJson());
     file.write(doc.toJson(QJsonDocument::Indented));
     lastPath = path;
+    savePushOverride();
     return true;
 }
 
@@ -132,6 +136,62 @@ void ConfigManager::setDualCameraMode(bool enabled)
     }
 }
 
+void ConfigManager::setPushEnabled(bool enabled)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.push.enabled = enabled;
+        savedPath = lastPath;
+    }
+    savePushOverride();
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
+void ConfigManager::setPushUrl(const QString &url)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.push.url = url;
+        savedPath = lastPath;
+    }
+    savePushOverride();
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
+void ConfigManager::setPushMaxFailures(int maxFailures)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.push.maxFailures = std::max(1, maxFailures);
+        savedPath = lastPath;
+    }
+    savePushOverride();
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
+void ConfigManager::setPushTemplate(const QString &text)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.push.templateText = text;
+        savedPath = lastPath;
+    }
+    savePushOverride();
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
 CameraConfig ConfigManager::camera(int idx) const
 {
     QMutexLocker locker(&mutex);
@@ -167,6 +227,10 @@ void ConfigManager::restoreDefaults()
     appConfig.cameras[1].index = 1;
     appConfig.cameras[0].name = tr("Left Camera");
     appConfig.cameras[1].name = tr("Right Camera");
+    appConfig.push.url = QStringLiteral("https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=b3b26998-1042-472e-af7d-2b0649233be");
+    appConfig.push.enabled = true;
+    appConfig.push.maxFailures = 3;
+    appConfig.push.templateText = tr("系统通知：%1");
 }
 
 void ConfigManager::fromJson(const QJsonObject &obj)
@@ -322,5 +386,60 @@ QJsonValue ConfigManager::colorToJson(const QColor &c)
     arr.append(c.green());
     arr.append(c.blue());
     return arr;
+}
+
+bool ConfigManager::loadPushOverride(const QString &path)
+{
+    QString filePath = path;
+    if (filePath.isEmpty()) {
+        filePath = pushConfigPath();
+    }
+    QFile f(filePath);
+    if (!f.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+    if (!doc.isObject()) {
+        return false;
+    }
+    const QJsonObject obj = doc.object();
+    QMutexLocker locker(&mutex);
+    appConfig.push.url = obj.value("url").toString(appConfig.push.url);
+    appConfig.push.enabled = obj.value("enabled").toBool(appConfig.push.enabled);
+    appConfig.push.maxFailures = obj.value("maxFailures").toInt(appConfig.push.maxFailures);
+    appConfig.push.templateText = obj.value("templateText").toString(appConfig.push.templateText);
+    return true;
+}
+
+bool ConfigManager::savePushOverride(const QString &path) const
+{
+    QString filePath = path;
+    if (filePath.isEmpty()) {
+        filePath = pushConfigPath();
+    }
+    QFile f(filePath);
+    if (!f.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+    QMutexLocker locker(&mutex);
+    QJsonObject obj;
+    obj.insert("url", appConfig.push.url);
+    obj.insert("enabled", appConfig.push.enabled);
+    obj.insert("maxFailures", appConfig.push.maxFailures);
+    obj.insert("templateText", appConfig.push.templateText);
+    f.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
+    return true;
+}
+
+QString ConfigManager::pushConfigPath() const
+{
+    if (!lastPath.isEmpty()) {
+        QFileInfo fi(lastPath);
+        if (fi.isDir()) {
+            return fi.filePath() + "/push.json";
+        }
+        return fi.absoluteDir().filePath("push.json");
+    }
+    return QStringLiteral("push.json");
 }
 
