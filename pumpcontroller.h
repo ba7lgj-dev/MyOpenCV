@@ -16,6 +16,7 @@ public:
 public slots:
     virtual void pulseLow(int ms) = 0;
     virtual void forceHigh() = 0;
+    virtual void setSafetyLimits(int maxEvents, int windowMs) = 0;
 
 signals:
     void safetyTriggered(const QString &msg);
@@ -37,6 +38,7 @@ public:
 public slots:
     void pulseLow(int ms) override;
     void forceHigh() override;
+    void setSafetyLimits(int maxEvents, int windowMs) override;
 
 private:
     void pushEvent(int ms);

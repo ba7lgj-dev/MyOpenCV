@@ -14,7 +14,8 @@ SOURCES += \
     logmanager.cpp \
     pumpcontroller.cpp \
     applicationcore.cpp \
-    cameramanagerdialog.cpp
+    cameramanagerdialog.cpp \
+    pumpsettingsdialog.cpp
 
 HEADERS += \
     xingaodaapp.h \
@@ -25,7 +26,8 @@ HEADERS += \
     logmanager.h \
     pumpcontroller.h \
     applicationcore.h \
-    cameramanagerdialog.h
+    cameramanagerdialog.h \
+    pumpsettingsdialog.h
 
 FORMS += \
     xingaodaapp.ui

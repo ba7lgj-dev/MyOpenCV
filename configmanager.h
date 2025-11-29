@@ -66,6 +66,10 @@ public:
     QString configPath() const { return lastPath; }
     void updateMmPerPixel(int cameraId, double value);
     void setAutoPumpEnabled(bool enabled);
+    void setPumpPort(const QString &port);
+    void setPumpDurationMs(int ms);
+    void setPumpThresholdMM(double mm);
+    void setPumpCooldownMs(int ms);
     void setDualCameraMode(bool enabled);
     void restoreDefaults();
     CameraConfig camera(int idx) const;

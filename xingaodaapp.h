@@ -35,10 +35,12 @@ private slots:
     void onRotation0(int idx);
     void onRotation1(int idx);
     void onCameraManager();
+    void onPumpSettings();
     void onCameraFrame(int id, const QImage &img);
     void onWidthUpdated(int id, const WidthResult &result);
     void onMessage(const QString &msg);
     void onSafety();
+    void onPumpThresholdChanged(double value);
 
 private:
     void setupConnections();
