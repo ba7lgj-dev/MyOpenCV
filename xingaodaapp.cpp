@@ -2,6 +2,7 @@
 #include "ui_xingaodaapp.h"
 #include "cameramanagerdialog.h"
 #include "pumpsettingsdialog.h"
+#include "pushsettingsdialog.h"
 #include <QComboBox>
 #include <QPixmap>
 #include <QImage>
@@ -26,10 +27,22 @@ xingaodaApp::xingaodaApp(QWidget *parent)
     syncCameraUi(1);
     ui->chkAutoPump->setChecked(core.config()->config().autoPumpEnabled);
     ui->spinPumpThreshold->setValue(core.config()->config().pumpThresholdMM);
+
+    pushStatusLabel = new QLabel(tr("推送未开启"), this);
+    statusBar()->addPermanentWidget(pushStatusLabel);
+    if (core.pushManager()) {
+        connect(core.pushManager(), &PushManager::statusUpdated, this, &xingaodaApp::onPushStatusChanged);
+        connect(core.pushManager(), &PushManager::consecutiveFailuresExceeded, this, &xingaodaApp::onPushFailureAlarm);
+        core.pushManager()->sendStartup();
+    }
+    onPushStatusChanged(0);
 }
 
 xingaodaApp::~xingaodaApp()
 {
+    if (core.pushManager()) {
+        core.pushManager()->sendShutdown();
+    }
     core.stopCameras();
     delete ui;
 }
@@ -54,6 +67,7 @@ void xingaodaApp::setupConnections()
     connect(ui->comboRotation1, qOverload<int>(&QComboBox::currentIndexChanged), this, &xingaodaApp::onRotation1);
     connect(ui->actionCameraManager, &QAction::triggered, this, &xingaodaApp::onCameraManager);
     connect(ui->actionPumpSettings, &QAction::triggered, this, &xingaodaApp::onPumpSettings);
+    connect(ui->actionPushSettings, &QAction::triggered, this, &xingaodaApp::onPushSettings);
     connect(ui->spinPumpThreshold, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &xingaodaApp::onPumpThresholdChanged);
 
     connect(&core, &ApplicationCore::cameraFrame, this, &xingaodaApp::onCameraFrame);
@@ -186,6 +200,16 @@ void xingaodaApp::onPumpSettings()
     dlg.exec();
 }
 
+void xingaodaApp::onPushSettings()
+{
+    PushSettingsDialog dlg(&core, this);
+    dlg.exec();
+    if (core.pushManager()) {
+        core.pushManager()->reloadConfig();
+    }
+    onPushStatusChanged(0);
+}
+
 void xingaodaApp::onCameraFrame(int id, const QImage &img)
 {
     QImage overlay = drawOverlay(id, img);
@@ -230,6 +254,32 @@ void xingaodaApp::onSafety()
 void xingaodaApp::onPumpThresholdChanged(double value)
 {
     core.config()->setPumpThresholdMM(value);
+}
+
+void xingaodaApp::onPushStatusChanged(int failures)
+{
+    if (!pushStatusLabel) return;
+    const auto cfgPush = core.config()->pushConfig();
+    if (!cfgPush.enabled || cfgPush.url.isEmpty()) {
+        pushStatusLabel->setText(tr("推送未开启"));
+        pushStatusLabel->setStyleSheet(QLatin1String(""));
+        return;
+    }
+    if (failures > 0) {
+        pushStatusLabel->setText(tr("推送失败%1次").arg(failures));
+        pushStatusLabel->setStyleSheet(QLatin1String("color: orange;"));
+    } else {
+        pushStatusLabel->setText(tr("推送正常"));
+        pushStatusLabel->setStyleSheet(QLatin1String("color: green;"));
+    }
+}
+
+void xingaodaApp::onPushFailureAlarm(int failures)
+{
+    if (!pushStatusLabel) return;
+    pushStatusLabel->setText(tr("推送连续失败%1次").arg(failures));
+    pushStatusLabel->setStyleSheet(QLatin1String("color: red;"));
+    onMessage(tr("推送连续失败，已超过阈值"));
 }
 
 void xingaodaApp::syncCameraUi(int id)

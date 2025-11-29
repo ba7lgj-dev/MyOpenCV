@@ -159,6 +159,19 @@ PushConfig ConfigManager::pushConfig() const
     return appConfig.push;
 }
 
+void ConfigManager::setPushConfig(const PushConfig &cfg)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.push = cfg;
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
 void ConfigManager::restoreDefaults()
 {
     QMutexLocker locker(&mutex);
