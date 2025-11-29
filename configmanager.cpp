@@ -159,6 +159,43 @@ PushConfig ConfigManager::pushConfig() const
     return appConfig.push;
 }
 
+void ConfigManager::setPushConfig(const PushConfig &cfg)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.push = cfg;
+        if (appConfig.push.maxFailures <= 0) {
+            appConfig.push.maxFailures = 3;
+        }
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
+void ConfigManager::setPushEnabled(bool enabled)
+{
+    auto cfg = pushConfig();
+    cfg.enabled = enabled;
+    setPushConfig(cfg);
+}
+
+void ConfigManager::setPushUrl(const QString &url)
+{
+    auto cfg = pushConfig();
+    cfg.url = url;
+    setPushConfig(cfg);
+}
+
+void ConfigManager::setPushMaxFailures(int count)
+{
+    auto cfg = pushConfig();
+    cfg.maxFailures = count;
+    setPushConfig(cfg);
+}
+
 void ConfigManager::restoreDefaults()
 {
     QMutexLocker locker(&mutex);

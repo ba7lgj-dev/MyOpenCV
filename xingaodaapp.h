@@ -7,6 +7,8 @@
 #include "applicationcore.h"
 #include "widthestimator.h"
 
+class PushSettingsDialog;
+
 QT_BEGIN_NAMESPACE
 namespace Ui { class xingaodaApp; }
 QT_END_NAMESPACE
@@ -36,11 +38,13 @@ private slots:
     void onRotation1(int idx);
     void onCameraManager();
     void onPumpSettings();
+    void onPushSettings();
     void onCameraFrame(int id, const QImage &img);
     void onWidthUpdated(int id, const WidthResult &result);
     void onMessage(const QString &msg);
     void onSafety();
     void onPumpThresholdChanged(double value);
+    void onPushFailureChanged(int count, int threshold);
 
 private:
     void setupRotationCombos();
@@ -48,6 +52,7 @@ private:
     void updateWidthLabel(int id, const WidthResult &result);
     void syncCameraUi(int id);
     QImage drawOverlay(int id, const QImage &src);
+    void updatePushStatus(int count, int threshold);
 
     Ui::xingaodaApp *ui;
     ApplicationCore core;

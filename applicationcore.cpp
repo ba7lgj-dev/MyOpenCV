@@ -17,6 +17,11 @@ ApplicationCore::ApplicationCore(QObject *parent)
     chartView->chart()->createDefaultAxes();
 
     connect(&pump, &Cp2102PumpController::safetyTriggered, this, &ApplicationCore::onPumpSafety);
+    connect(&push, &PushManager::failureCountChanged, this, [this](int count, int threshold){
+        if (count >= threshold && threshold > 0) {
+            emit message(tr("推送连续失败 %1 次，请检查配置").arg(count));
+        }
+    });
 }
 
 ApplicationCore::~ApplicationCore()
@@ -37,6 +42,7 @@ void ApplicationCore::initialize()
     cam1.setConfig(cfg.camera(1));
     autoPump = cfg.config().autoPumpEnabled;
     applyPumpSettings();
+    applyPushSettings();
 
     connect(&cam0, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame0);
     connect(&cam1, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame1);
@@ -59,6 +65,11 @@ CalibrationManager *ApplicationCore::calibration()
 QChartView *ApplicationCore::trendChart()
 {
     return chartView;
+}
+
+PushManager *ApplicationCore::pushManager()
+{
+    return &push;
 }
 
 void ApplicationCore::startCameras()
@@ -165,6 +176,11 @@ void ApplicationCore::reloadPumpConfig()
     }
 }
 
+void ApplicationCore::reloadPushConfig()
+{
+    applyPushSettings();
+}
+
 bool ApplicationCore::testPumpPulse(const QString &portName, int pulseMs)
 {
     const int duration = qBound(50, pulseMs, 20000);
@@ -184,6 +200,11 @@ bool ApplicationCore::testPumpPulse(const QString &portName, int pulseMs)
     tester.close();
     LogManager::instance().logInfo(tr("Pump test pulse sent on %1 for %2 ms").arg(portName).arg(duration));
     return true;
+}
+
+void ApplicationCore::sendPush(const QString &content)
+{
+    push.sendText(content);
 }
 
 void ApplicationCore::processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfgCam)
@@ -210,6 +231,7 @@ void ApplicationCore::processPumpLogic(int id, const WidthResult &result, const 
     pump.pulseLow(pulseDuration);
     lastPulseMs = now;
     pumpTriggerCount[id] = 0;
+    sendPush(tr("检测到膜宽低于阈值，已触发加气。当前宽度：%1mm").arg(result.widthMM, 0, 'f', 1));
 }
 
 void ApplicationCore::appendTrend(int id, double widthMM)
@@ -233,5 +255,10 @@ void ApplicationCore::onPumpSafety(const QString &msg)
 void ApplicationCore::applyPumpSettings()
 {
     pump.setSafetyLimits(cfg.config().safetyMaxEvents, cfg.config().safetyWindowMs);
+}
+
+void ApplicationCore::applyPushSettings()
+{
+    push.reloadConfig();
 }
 
