@@ -20,14 +20,14 @@ public:
     void sendShutdown();
     void sendException(const QString &errorMsg);
     void sendPumpTriggered(int cameraId, double widthMm);
-    bool sendCustomMessage(const QString &text);
+    bool sendCustomMessage(const QString &text, bool countFailure = true);
 
 signals:
     void consecutiveFailuresExceeded(int count);
     void statusUpdated(int consecutiveFailures);
 
 private:
-    bool postMessage(const QString &text);
+    bool postMessage(const QString &text, bool countFailure = true);
     bool isEnabled() const;
     bool ensureSslAvailable();
 

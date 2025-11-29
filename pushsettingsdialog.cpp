@@ -67,7 +67,7 @@ void PushSettingsDialog::onTest()
     cfgTemp.enabled = chkEnabled->isChecked();
     cfgTemp.maxFailures = spinMaxFailures->value();
     push->setConfig(cfgTemp);
-    bool result = push->sendCustomMessage(tr("测试推送：%1").arg(QDateTime::currentDateTime().toString("HH:mm:ss")));
+    bool result = push->sendCustomMessage(tr("测试推送：%1").arg(QDateTime::currentDateTime().toString("HH:mm:ss")), false);
     push->reloadConfig();
     LogManager::instance().logInfo(result ? tr("测试推送成功") : tr("测试推送失败，请查看上方响应记录"));
     labelStatus->setText(result ? tr("测试推送成功") : tr("测试推送失败，详情见日志"));
