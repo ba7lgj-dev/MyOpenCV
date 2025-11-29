@@ -56,7 +56,7 @@ bool PushManager::sendCustomMessage(const QString &text, bool countFailure)
 
 bool PushManager::postMessage(const QString &text, bool countFailure)
 {
-    qDebug()<< QSslSocket::sslLibraryBuildVersionString();
+//    qDebug()<< QSslSocket::sslLibraryBuildVersionString();
     if (!isEnabled()) {
         if (countFailure) {
             consecutiveFailures = 0;
