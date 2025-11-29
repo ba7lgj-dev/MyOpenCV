@@ -7,6 +7,8 @@
 #include "applicationcore.h"
 #include "widthestimator.h"
 
+class QCloseEvent;
+
 QT_BEGIN_NAMESPACE
 namespace Ui { class xingaodaApp; }
 QT_END_NAMESPACE
@@ -41,15 +43,25 @@ private slots:
     void onMessage(const QString &msg);
     void onSafety();
     void onPumpThresholdChanged(double value);
+    void onPushEnabled(bool enabled);
+    void onPushUrlEdited();
+    void onTestPush();
+    void onPushFailed(const QString &msg, int failures);
+    void onPushRecovered();
 
 private:
     void setupConnections();
     void updateWidthLabel(int id, const WidthResult &result);
+    void updateWidthSummary();
+    double estimatedWidth() const;
     void syncCameraUi(int id);
     QImage drawOverlay(int id, const QImage &src);
+    void closeEvent(QCloseEvent *event) override;
+    void initRotationCombos();
 
     Ui::xingaodaApp *ui;
     ApplicationCore core;
     WidthResult lastWidth[2];
+    bool shutdownNotified {false};
 };
 #endif // XINGAODAAPP_H

@@ -6,12 +6,14 @@
 #include <QList>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
+#include <QtCharts/QValueAxis>
 #include "camera.h"
 #include "widthestimator.h"
 #include "configmanager.h"
 #include "calibrationmanager.h"
 #include "pumpcontroller.h"
 #include "logmanager.h"
+#include "pushnotifier.h"
 
 QT_CHARTS_USE_NAMESPACE
 
@@ -36,6 +38,8 @@ signals:
     void widthUpdated(int id, const WidthResult &result);
     void message(const QString &msg);
     void safetyModeEnabled();
+    void pushFailed(const QString &msg, int failures);
+    void pushRecovered();
 
 public slots:
     void startCameras();
@@ -43,6 +47,10 @@ public slots:
     void calibrateWidth(int cameraId, double realMM);
     void toggleAutoExposure(int cameraId);
     void setAutoPumpEnabled(bool enabled);
+    void notifyStartup();
+    void notifyShutdown();
+    void notifyException(const QString &msg);
+    PushNotifier *pushChannel() { return push; }
 
 private slots:
     void onFrame0(const cv::Mat &frame);
@@ -66,11 +74,15 @@ private:
     QChartView *chartView {nullptr};
     QLineSeries *series0 {nullptr};
     QLineSeries *series1 {nullptr};
+    QValueAxis *xAxis {nullptr};
+    QValueAxis *yAxis {nullptr};
     WidthResult lastResult[2];
     int pumpTriggerCount[2] {0, 0};
     QString defaultConfigPath {"config.json"};
     bool running {false};
     int pumpTriggerRequirement {3};
+    PushNotifier *push {nullptr};
+    qint64 trendStartMs {0};
 };
 
 #endif // APPLICATIONCORE_H
