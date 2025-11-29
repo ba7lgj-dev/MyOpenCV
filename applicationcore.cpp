@@ -2,6 +2,7 @@
 #include <QDateTime>
 #include <QtGlobal>
 #include <algorithm>
+#include <limits>
 #include <opencv2/opencv.hpp>
 
 ApplicationCore::ApplicationCore(QObject *parent)
@@ -16,13 +17,24 @@ ApplicationCore::ApplicationCore(QObject *parent)
     series1->setName("Camera1");
     chartView->chart()->addSeries(series0);
     chartView->chart()->addSeries(series1);
-    chartView->chart()->createDefaultAxes();
-    if (!chartView->chart()->axes(Qt::Horizontal).isEmpty()) {
-        chartView->chart()->axes(Qt::Horizontal).first()->setTitleText(tr("时间 (s)"));
-    }
-    if (!chartView->chart()->axes(Qt::Vertical).isEmpty()) {
-        chartView->chart()->axes(Qt::Vertical).first()->setTitleText(tr("宽度 (cm)"));
-    }
+
+    axisX = new QValueAxis(chartView->chart());
+    axisY = new QValueAxis(chartView->chart());
+    axisX->setTitleText(tr("时间 (s)"));
+    axisX->setRange(0, trendWindowSeconds);
+    axisX->setTickCount(static_cast<int>(trendWindowSeconds / trendTickSeconds) + 1);
+    axisX->setLabelFormat("%.0f");
+    axisY->setTitleText(tr("宽度 (cm)"));
+    axisY->setRange(0.0, 100.0);
+    axisY->setTickCount(6);
+    axisY->setLabelFormat("%.1f");
+
+    chartView->chart()->addAxis(axisX, Qt::AlignBottom);
+    chartView->chart()->addAxis(axisY, Qt::AlignLeft);
+    series0->attachAxis(axisX);
+    series0->attachAxis(axisY);
+    series1->attachAxis(axisX);
+    series1->attachAxis(axisY);
 
     push = new PushManager(&cfg, this);
     autoPumpController = new AutoPumpController(&pump, push, &cfg);
@@ -336,10 +348,45 @@ void ApplicationCore::appendTrend(int id, double widthMM)
     const double widthCm = widthMM / 10.0;
     QLineSeries *series = id == 0 ? series0 : series1;
     series->append(xSeconds, widthCm);
-    while (series->count() > 200) {
+    while (series->count() > 0 && series->points().first().x() < xSeconds - trendWindowSeconds) {
         series->removePoints(0, 1);
     }
-    chartView->chart()->axes(Qt::Horizontal).first()->setRange(xSeconds - 60.0, xSeconds);
+
+    if (axisX) {
+        axisX->setRange(xSeconds - trendWindowSeconds, xSeconds);
+    }
+
+    double minY = std::numeric_limits<double>::max();
+    double maxY = std::numeric_limits<double>::lowest();
+    auto updateRange = [&](QLineSeries *s) {
+        for (const QPointF &p : s->points()) {
+            if (p.x() < xSeconds - trendWindowSeconds) continue;
+            minY = std::min(minY, p.y());
+            maxY = std::max(maxY, p.y());
+        }
+    };
+    updateRange(series0);
+    updateRange(series1);
+
+    if (minY == std::numeric_limits<double>::max() || maxY == std::numeric_limits<double>::lowest()) {
+        minY = 0.0;
+        maxY = 10.0;
+    }
+    if (qFuzzyCompare(minY, maxY)) {
+        minY = std::max(0.0, minY - 5.0);
+        maxY += 5.0;
+    }
+    const double padding = std::max(1.0, (maxY - minY) * 0.15);
+    minY = std::max(0.0, minY - padding);
+    maxY += padding;
+    if (axisY) {
+        axisY->setRange(minY, maxY);
+        axisY->setTickCount(6);
+        if (axisX) {
+            const int tickCount = static_cast<int>((trendWindowSeconds / trendTickSeconds) + 1);
+            axisX->setTickCount(std::max(3, tickCount));
+        }
+    }
 }
 
 void ApplicationCore::onPumpSafety(const QString &msg)
