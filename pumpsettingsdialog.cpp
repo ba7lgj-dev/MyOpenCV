@@ -5,6 +5,8 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QPushButton>
+#include <QLineEdit>
+#include <QCheckBox>
 #include <QApplication>
 #include <QSerialPortInfo>
 #include <QSerialPort>
@@ -22,22 +24,32 @@ PumpSettingsDialog::PumpSettingsDialog(ApplicationCore *core, QWidget *parent)
     comboPort = new QComboBox(this);
     spinDuration = new QSpinBox(this);
     spinCooldown = new QSpinBox(this);
+    spinPushFailures = new QSpinBox(this);
+    editPushUrl = new QLineEdit(this);
+    chkPushEnabled = new QCheckBox(tr("启用微信推送"), this);
     labelStatus = new QLabel(this);
 
     spinDuration->setRange(50, 20000);
     spinDuration->setSuffix(tr(" ms"));
     spinCooldown->setRange(0, 600000);
     spinCooldown->setSuffix(tr(" ms"));
+    spinPushFailures->setRange(1, 20);
+    spinPushFailures->setValue(3);
 
     form->addRow(tr("加气串口"), comboPort);
     form->addRow(tr("单次加气时长"), spinDuration);
     form->addRow(tr("加气冷却时间"), spinCooldown);
+    form->addRow(tr("推送 Webhook"), editPushUrl);
+    form->addRow(tr("推送失败阈值"), spinPushFailures);
+    form->addRow(QString(), chkPushEnabled);
 
     auto btnRefresh = new QPushButton(tr("刷新串口"), this);
     auto btnTest = new QPushButton(tr("测试串口"), this);
+    auto btnTestPush = new QPushButton(tr("测试推送"), this);
     auto hbox = new QHBoxLayout();
     hbox->addWidget(btnRefresh);
     hbox->addWidget(btnTest);
+    hbox->addWidget(btnTestPush);
     hbox->addStretch();
 
     auto buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
@@ -49,6 +61,14 @@ PumpSettingsDialog::PumpSettingsDialog(ApplicationCore *core, QWidget *parent)
 
     connect(btnRefresh, &QPushButton::clicked, this, &PumpSettingsDialog::onRefreshPorts);
     connect(btnTest, &QPushButton::clicked, this, &PumpSettingsDialog::onTestPort);
+    connect(btnTestPush, &QPushButton::clicked, this, [this](){
+        if (!core) {
+            labelStatus->setText(tr("无法测试推送：核心未初始化"));
+            return;
+        }
+        bool ok = core->sendTestPush(tr("推送通道测试：请确认收到消息"));
+        labelStatus->setText(ok ? tr("推送测试成功") : tr("推送测试失败"));
+    });
     connect(buttons, &QDialogButtonBox::accepted, this, &PumpSettingsDialog::onAccept);
     connect(buttons, &QDialogButtonBox::rejected, this, &PumpSettingsDialog::reject);
 
@@ -86,6 +106,9 @@ void PumpSettingsDialog::loadConfig()
     }
     spinDuration->setValue(appCfg.pumpDurationMs);
     spinCooldown->setValue(appCfg.pumpCooldownMs);
+    editPushUrl->setText(appCfg.push.url);
+    chkPushEnabled->setChecked(appCfg.push.enabled);
+    spinPushFailures->setValue(appCfg.push.maxFailures);
 }
 
 void PumpSettingsDialog::onTestPort()
@@ -116,9 +139,15 @@ void PumpSettingsDialog::onAccept()
     cfg->setPumpPort(comboPort->currentText());
     cfg->setPumpDurationMs(spinDuration->value());
     cfg->setPumpCooldownMs(spinCooldown->value());
+    PushConfig pushCfg = cfg->pushConfig();
+    pushCfg.url = editPushUrl->text();
+    pushCfg.enabled = chkPushEnabled->isChecked();
+    pushCfg.maxFailures = spinPushFailures->value();
+    cfg->setPushConfig(pushCfg);
     cfg->save(cfg->configPath());
     if (core) {
         core->reloadPumpConfig();
+        core->reloadPushConfig();
     }
     accept();
 }

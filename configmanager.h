@@ -71,6 +71,7 @@ public:
     void setPumpThresholdMM(double mm);
     void setPumpCooldownMs(int ms);
     void setDualCameraMode(bool enabled);
+    void setPushConfig(const PushConfig &cfg);
     void restoreDefaults();
     CameraConfig camera(int idx) const;
     void setCameraConfig(int idx, const CameraConfig &cfg);

@@ -10,6 +10,10 @@
 #include <QPen>
 #include <QtGlobal>
 #include <QDoubleSpinBox>
+#include <QApplication>
+#include <QVector>
+#include <numeric>
+#include <QtMath>
 
 xingaodaApp::xingaodaApp(QWidget *parent)
     : QMainWindow(parent)
@@ -19,16 +23,28 @@ xingaodaApp::xingaodaApp(QWidget *parent)
     ui->chartView->setChart(core.trendChart()->chart());
     setupConnections();
     core.initialize();
+    lastWidth[0].valid = false;
+    lastWidth[1].valid = false;
     syncCameraUi(0);
     syncCameraUi(1);
     ui->chkAutoPump->setChecked(core.config()->config().autoPumpEnabled);
     ui->spinPumpThreshold->setValue(core.config()->config().pumpThresholdMM);
+    ui->labelPushAlert->clear();
+    updateBigWidthLabels();
+    connect(qApp, &QCoreApplication::aboutToQuit, this, &xingaodaApp::sendShutdownNotice);
 }
 
 xingaodaApp::~xingaodaApp()
 {
     core.stopCameras();
     delete ui;
+}
+
+void xingaodaApp::sendShutdownNotice()
+{
+    if (core.pushNotifier()) {
+        core.pushNotifier()->sendText(tr("系统已关闭"));
+    }
 }
 
 void xingaodaApp::setupConnections()
@@ -57,6 +73,12 @@ void xingaodaApp::setupConnections()
     connect(&core, &ApplicationCore::widthUpdated, this, &xingaodaApp::onWidthUpdated);
     connect(&core, &ApplicationCore::message, this, &xingaodaApp::onMessage);
     connect(&core, &ApplicationCore::safetyModeEnabled, this, &xingaodaApp::onSafety);
+    connect(core.pushNotifier(), &PushManager::failureThresholdReached, this, [this](int count){
+        ui->labelPushAlert->setText(tr("推送连续失败 %1 次，请检查网络").arg(count));
+    });
+    connect(core.pushNotifier(), &PushManager::recovered, this, [this](){
+        ui->labelPushAlert->clear();
+    });
 }
 
 void xingaodaApp::onStart()
@@ -192,10 +214,39 @@ void xingaodaApp::updateWidthLabel(int id, const WidthResult &result)
     }
 }
 
+double xingaodaApp::estimatedWidth() const
+{
+    QVector<double> widths;
+    for (const auto &w : lastWidth) {
+        if (w.valid) {
+            widths.append(w.widthMM);
+        }
+    }
+    if (widths.isEmpty()) return -1.0;
+    double base = std::accumulate(widths.begin(), widths.end(), 0.0) / widths.size();
+    if (widths.size() == 2) {
+        double diff = widths[1] - widths[0];
+        base += diff * 0.1; // 补偿差异，略微向较宽的一侧偏移
+    }
+    return base;
+}
+
+void xingaodaApp::updateBigWidthLabels()
+{
+    const auto fmt = [](double value) {
+        return value >= 0.0 ? QString::number(value, 'f', 1) + " mm" : QStringLiteral("--");
+    };
+    ui->labelBigWidth0->setText(tr("摄像头0 宽度：%1").arg(lastWidth[0].valid ? fmt(lastWidth[0].widthMM) : QStringLiteral("--")));
+    ui->labelBigWidth1->setText(tr("摄像头1 宽度：%1").arg(lastWidth[1].valid ? fmt(lastWidth[1].widthMM) : QStringLiteral("--")));
+    double estimate = estimatedWidth();
+    ui->labelEstimatedWidth->setText(tr("综合预估宽度：%1").arg(estimate >= 0 ? fmt(estimate) : QStringLiteral("--")));
+}
+
 void xingaodaApp::onWidthUpdated(int id, const WidthResult &result)
 {
     lastWidth[id] = result;
     updateWidthLabel(id, result);
+    updateBigWidthLabels();
 }
 
 void xingaodaApp::onMessage(const QString &msg)

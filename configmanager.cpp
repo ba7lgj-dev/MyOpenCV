@@ -132,6 +132,19 @@ void ConfigManager::setDualCameraMode(bool enabled)
     }
 }
 
+void ConfigManager::setPushConfig(const PushConfig &cfg)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.push = cfg;
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
 CameraConfig ConfigManager::camera(int idx) const
 {
     QMutexLocker locker(&mutex);
@@ -167,6 +180,8 @@ void ConfigManager::restoreDefaults()
     appConfig.cameras[1].index = 1;
     appConfig.cameras[0].name = tr("Left Camera");
     appConfig.cameras[1].name = tr("Right Camera");
+    appConfig.push.url = QStringLiteral("https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=b3b26998-1042-472e-af7d-2b0649233be");
+    appConfig.push.enabled = true;
 }
 
 void ConfigManager::fromJson(const QJsonObject &obj)

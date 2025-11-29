@@ -1,6 +1,7 @@
 #include "applicationcore.h"
 #include <QDateTime>
 #include <QtGlobal>
+#include <algorithm>
 
 ApplicationCore::ApplicationCore(QObject *parent)
     : QObject(parent)
@@ -14,7 +15,19 @@ ApplicationCore::ApplicationCore(QObject *parent)
     series1->setName("Camera1");
     chartView->chart()->addSeries(series0);
     chartView->chart()->addSeries(series1);
-    chartView->chart()->createDefaultAxes();
+    axisX = new QValueAxis();
+    axisY = new QValueAxis();
+    axisX->setTitleText(tr("时间 (秒)"));
+    axisX->setLabelFormat("%.0f s");
+    axisX->setTickCount(7);
+    axisY->setTitleText(tr("宽度 (mm)"));
+
+    chartView->chart()->addAxis(axisX, Qt::AlignBottom);
+    chartView->chart()->addAxis(axisY, Qt::AlignLeft);
+    series0->attachAxis(axisX);
+    series0->attachAxis(axisY);
+    series1->attachAxis(axisX);
+    series1->attachAxis(axisY);
 
     connect(&pump, &Cp2102PumpController::safetyTriggered, this, &ApplicationCore::onPumpSafety);
 }
@@ -31,6 +44,8 @@ void ApplicationCore::initialize()
         cfg.restoreDefaults();
         cfg.save(defaultConfigPath);
     }
+    push.configure(cfg.pushConfig());
+    startTimeMs = QDateTime::currentMSecsSinceEpoch();
     cam0.open(cfg.camera(0).index);
     cam1.open(cfg.camera(1).index);
     cam0.setConfig(cfg.camera(0));
@@ -44,6 +59,8 @@ void ApplicationCore::initialize()
     connect(&cam1, &UsbCamera::frameReady, [this](const QImage &img){ emit cameraFrame(1, img);});
     connect(&cam0, &UsbCamera::cameraError, this, [this](const QString &msg){ emit message(msg); LogManager::instance().logWarn(msg);});
     connect(&cam1, &UsbCamera::cameraError, this, [this](const QString &msg){ emit message(msg); LogManager::instance().logWarn(msg);});
+
+    notifyStartup();
 }
 
 ConfigManager *ApplicationCore::config()
@@ -165,6 +182,11 @@ void ApplicationCore::reloadPumpConfig()
     }
 }
 
+void ApplicationCore::reloadPushConfig()
+{
+    push.configure(cfg.pushConfig());
+}
+
 bool ApplicationCore::testPumpPulse(const QString &portName, int pulseMs)
 {
     const int duration = qBound(50, pulseMs, 20000);
@@ -184,6 +206,11 @@ bool ApplicationCore::testPumpPulse(const QString &portName, int pulseMs)
     tester.close();
     LogManager::instance().logInfo(tr("Pump test pulse sent on %1 for %2 ms").arg(portName).arg(duration));
     return true;
+}
+
+bool ApplicationCore::sendTestPush(const QString &message)
+{
+    return push.sendText(message);
 }
 
 void ApplicationCore::processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfgCam)
@@ -210,17 +237,30 @@ void ApplicationCore::processPumpLogic(int id, const WidthResult &result, const 
     pump.pulseLow(pulseDuration);
     lastPulseMs = now;
     pumpTriggerCount[id] = 0;
+    notifyPumpTrigger(id, result.widthMM);
 }
 
 void ApplicationCore::appendTrend(int id, double widthMM)
 {
-    qint64 x = QDateTime::currentMSecsSinceEpoch();
+    qint64 now = QDateTime::currentMSecsSinceEpoch();
+    double x = (now - startTimeMs) / 1000.0;
     QLineSeries *series = id == 0 ? series0 : series1;
     series->append(x, widthMM);
-    while (series->count() > 200) {
+    while (!series->points().isEmpty() && series->points().first().x() < x - 120.0) {
         series->removePoints(0, 1);
     }
-    chartView->chart()->axes(Qt::Horizontal).first()->setRange(x - 60000, x);
+    double startRange = x > 60.0 ? x - 60.0 : 0.0;
+    axisX->setRange(startRange, startRange + 60.0);
+
+    auto maxValue = [](QLineSeries *s){
+        double maxVal = 0.0;
+        for (const auto &p : s->pointsVector()) {
+            maxVal = std::max(maxVal, p.y());
+        }
+        return maxVal;
+    };
+    double maxY = std::max(maxValue(series0), maxValue(series1));
+    axisY->setRange(0.0, std::max(100.0, maxY * 1.2 + 10.0));
 }
 
 void ApplicationCore::onPumpSafety(const QString &msg)
@@ -233,5 +273,22 @@ void ApplicationCore::onPumpSafety(const QString &msg)
 void ApplicationCore::applyPumpSettings()
 {
     pump.setSafetyLimits(cfg.config().safetyMaxEvents, cfg.config().safetyWindowMs);
+}
+
+void ApplicationCore::notifyStartup()
+{
+    push.sendText(tr("系统已启动"));
+}
+
+void ApplicationCore::notifyShutdown()
+{
+    push.sendText(tr("系统已关闭"));
+}
+
+void ApplicationCore::notifyPumpTrigger(int id, double widthMM)
+{
+    const CameraConfig cfgCam = cfg.camera(id);
+    QString name = cfgCam.name.isEmpty() ? QString("Camera%1").arg(id) : cfgCam.name;
+    push.sendText(tr("%1 触发加气，当前宽度：%2 mm").arg(name).arg(widthMM, 0, 'f', 1));
 }
 

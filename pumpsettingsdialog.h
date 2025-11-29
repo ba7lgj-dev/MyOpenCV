@@ -5,6 +5,8 @@
 #include <QComboBox>
 #include <QSpinBox>
 #include <QLabel>
+#include <QLineEdit>
+#include <QCheckBox>
 #include "configmanager.h"
 
 class ApplicationCore;
@@ -30,6 +32,9 @@ private:
     QComboBox *comboPort {nullptr};
     QSpinBox *spinDuration {nullptr};
     QSpinBox *spinCooldown {nullptr};
+    QSpinBox *spinPushFailures {nullptr};
+    QLineEdit *editPushUrl {nullptr};
+    QCheckBox *chkPushEnabled {nullptr};
     QLabel *labelStatus {nullptr};
 };
 

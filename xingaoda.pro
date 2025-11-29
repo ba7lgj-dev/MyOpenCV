@@ -1,4 +1,4 @@
-QT       += core gui widgets serialport charts
+QT       += core gui widgets serialport charts network
 
 CONFIG += c++17
 
@@ -15,7 +15,8 @@ SOURCES += \
     pumpcontroller.cpp \
     applicationcore.cpp \
     cameramanagerdialog.cpp \
-    pumpsettingsdialog.cpp
+    pumpsettingsdialog.cpp \
+    pushmanager.cpp
 
 HEADERS += \
     xingaodaapp.h \
@@ -27,7 +28,8 @@ HEADERS += \
     pumpcontroller.h \
     applicationcore.h \
     cameramanagerdialog.h \
-    pumpsettingsdialog.h
+    pumpsettingsdialog.h \
+    pushmanager.h
 
 FORMS += \
     xingaodaapp.ui

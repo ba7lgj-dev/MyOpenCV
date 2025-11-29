@@ -6,12 +6,14 @@
 #include <QList>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
+#include <QtCharts/QValueAxis>
 #include "camera.h"
 #include "widthestimator.h"
 #include "configmanager.h"
 #include "calibrationmanager.h"
 #include "pumpcontroller.h"
 #include "logmanager.h"
+#include "pushmanager.h"
 
 QT_CHARTS_USE_NAMESPACE
 
@@ -25,11 +27,14 @@ public:
     ConfigManager *config();
     CalibrationManager *calibration();
     QChartView *trendChart();
+    PushManager *pushNotifier() { return &push; }
     QList<int> availableCameraIndices(int maxIndex = 8) const;
     void reloadCamerasFromConfig();
     void reloadPumpConfig();
+    void reloadPushConfig();
     QString configPath() const { return defaultConfigPath; }
     bool testPumpPulse(const QString &portName, int pulseMs);
+    bool sendTestPush(const QString &message);
 
 signals:
     void cameraFrame(int id, const QImage &img);
@@ -54,6 +59,9 @@ private:
     void processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfg);
     void appendTrend(int id, double widthMM);
     void applyPumpSettings();
+    void notifyStartup();
+    void notifyShutdown();
+    void notifyPumpTrigger(int id, double widthMM);
 
     ConfigManager cfg;
     CalibrationManager calib{&cfg};
@@ -66,11 +74,15 @@ private:
     QChartView *chartView {nullptr};
     QLineSeries *series0 {nullptr};
     QLineSeries *series1 {nullptr};
+    QValueAxis *axisX {nullptr};
+    QValueAxis *axisY {nullptr};
+    qint64 startTimeMs {0};
     WidthResult lastResult[2];
     int pumpTriggerCount[2] {0, 0};
     QString defaultConfigPath {"config.json"};
     bool running {false};
     int pumpTriggerRequirement {3};
+    PushManager push;
 };
 
 #endif // APPLICATIONCORE_H

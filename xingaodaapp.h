@@ -18,6 +18,7 @@ class xingaodaApp : public QMainWindow
 public:
     xingaodaApp(QWidget *parent = nullptr);
     ~xingaodaApp();
+    void sendShutdownNotice();
 
 private slots:
     void onStart();
@@ -47,6 +48,8 @@ private:
     void updateWidthLabel(int id, const WidthResult &result);
     void syncCameraUi(int id);
     QImage drawOverlay(int id, const QImage &src);
+    void updateBigWidthLabels();
+    double estimatedWidth() const;
 
     Ui::xingaodaApp *ui;
     ApplicationCore core;
