@@ -77,12 +77,19 @@ bool PushManager::postMessage(const QString &text)
         loop.exec();
 
         QVariant statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+        QByteArray body = reply->readAll();
         if (reply->error() == QNetworkReply::NoError && statusCode.toInt() / 100 == 2) {
+            LogManager::instance().logInfo(tr("推送成功（HTTP %1）：%2").arg(statusCode.toInt()).arg(QString::fromUtf8(body)));
             success = true;
             reply->deleteLater();
             break;
         }
-        LogManager::instance().logWarn(tr("推送失败（尝试 %1/%2）：%3").arg(attempt + 1).arg(retryTimes).arg(reply->errorString()));
+        LogManager::instance().logWarn(tr("推送失败（尝试 %1/%2，HTTP %3）：%4 | 响应：%5")
+                                       .arg(attempt + 1)
+                                       .arg(retryTimes)
+                                       .arg(statusCode.toInt())
+                                       .arg(reply->errorString())
+                                       .arg(QString::fromUtf8(body)));
         reply->deleteLater();
     }
 

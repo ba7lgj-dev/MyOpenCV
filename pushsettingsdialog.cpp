@@ -1,5 +1,6 @@
 #include "pushsettingsdialog.h"
 #include "applicationcore.h"
+#include "logmanager.h"
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QVBoxLayout>
@@ -66,9 +67,10 @@ void PushSettingsDialog::onTest()
     cfgTemp.enabled = chkEnabled->isChecked();
     cfgTemp.maxFailures = spinMaxFailures->value();
     push->setConfig(cfgTemp);
-    push->sendCustomMessage(tr("测试推送：%1").arg(QDateTime::currentDateTime().toString("HH:mm:ss")));
+    bool result = push->sendCustomMessage(tr("测试推送：%1").arg(QDateTime::currentDateTime().toString("HH:mm:ss")));
     push->reloadConfig();
-    labelStatus->setText(tr("已发送测试推送"));
+    LogManager::instance().logInfo(result ? tr("测试推送成功") : tr("测试推送失败，请查看上方响应记录"));
+    labelStatus->setText(result ? tr("测试推送成功") : tr("测试推送失败，详情见日志"));
 }
 
 void PushSettingsDialog::onAccept()
