@@ -318,14 +318,9 @@
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
-   <widget class="QMenu" name="menuSettings">
-   <property name="title">
-    <string>系统设置</string>
-   </property>
    <addaction name="actionCameraManager"/>
    <addaction name="actionPumpSettings"/>
   </widget>
-  <addaction name="menuSettings"/>
  </widget>
  <action name="actionCameraManager">
   <property name="text">
