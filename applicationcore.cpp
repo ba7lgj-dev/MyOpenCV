@@ -1,5 +1,6 @@
 #include "applicationcore.h"
 #include <QDateTime>
+#include <QtGlobal>
 
 ApplicationCore::ApplicationCore(QObject *parent)
     : QObject(parent)
@@ -35,6 +36,7 @@ void ApplicationCore::initialize()
     cam0.setConfig(cfg.camera(0));
     cam1.setConfig(cfg.camera(1));
     autoPump = cfg.config().autoPumpEnabled;
+    applyPumpSettings();
 
     connect(&cam0, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame0);
     connect(&cam1, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame1);
@@ -94,6 +96,9 @@ void ApplicationCore::setAutoPumpEnabled(bool enabled)
 {
     autoPump = enabled;
     cfg.setAutoPumpEnabled(enabled);
+    if (!enabled) {
+        pumpTriggerCount[0] = pumpTriggerCount[1] = 0;
+    }
     emit message(enabled ? tr("Auto pump enabled") : tr("Auto pump disabled"));
 }
 
@@ -149,16 +154,41 @@ void ApplicationCore::reloadCamerasFromConfig()
     }
 }
 
+void ApplicationCore::reloadPumpConfig()
+{
+    applyPumpSettings();
+    if (running) {
+        pump.close();
+        if (!cfg.config().pumpPort.isEmpty()) {
+            pump.open(cfg.config().pumpPort);
+        }
+    }
+}
+
 void ApplicationCore::processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfgCam)
 {
-    Q_UNUSED(id)
-    if (!autoPump) return;
-    if (result.widthMM >= cfgCam.thresholdMM) return;
+    Q_UNUSED(cfgCam)
+    const AppConfig currentConfig = cfg.config();
+    const double pumpThreshold = qBound(10.0, currentConfig.pumpThresholdMM, 10000.0);
+    const int pumpCooldown = qBound(0, currentConfig.pumpCooldownMs, 600000);
+    const int pulseDuration = qBound(50, currentConfig.pumpDurationMs, 20000);
+    if (!autoPump) {
+        pumpTriggerCount[0] = pumpTriggerCount[1] = 0;
+        return;
+    }
+    if (result.widthMM >= pumpThreshold) {
+        pumpTriggerCount[id] = 0;
+        return;
+    }
+    pumpTriggerCount[id]++;
+    if (pumpTriggerCount[id] < pumpTriggerRequirement) return;
+
     qint64 now = QDateTime::currentMSecsSinceEpoch();
-    if (now - lastPulseMs < cfgCam.cooldownMs) return;
-    int pulse = PumpPolicy::calcPulseMs(cfgCam.thresholdMM, result.widthMM);
-    pump.pulseLow(pulse);
+    if (now - lastPulseMs < pumpCooldown) return;
+
+    pump.pulseLow(pulseDuration);
     lastPulseMs = now;
+    pumpTriggerCount[id] = 0;
 }
 
 void ApplicationCore::appendTrend(int id, double widthMM)
@@ -177,5 +207,10 @@ void ApplicationCore::onPumpSafety(const QString &msg)
     autoPump = false;
     emit safetyModeEnabled();
     emit message(msg);
+}
+
+void ApplicationCore::applyPumpSettings()
+{
+    pump.setSafetyLimits(cfg.config().safetyMaxEvents, cfg.config().safetyWindowMs);
 }
 
