@@ -61,6 +61,15 @@ bool PushManager::postMessage(const QString &text)
         return false;
     }
 
+    if (!ensureSslAvailable()) {
+        consecutiveFailures++;
+        if (consecutiveFailures >= current.maxFailures) {
+            emit consecutiveFailuresExceeded(consecutiveFailures);
+        }
+        emit statusUpdated(consecutiveFailures);
+        return false;
+    }
+
     bool success = false;
     for (int attempt = 0; attempt < retryTimes; ++attempt) {
         QNetworkRequest req(QUrl(current.url));
@@ -103,5 +112,22 @@ bool PushManager::postMessage(const QString &text)
     }
     emit statusUpdated(consecutiveFailures);
     return success;
+}
+
+bool PushManager::ensureSslAvailable()
+{
+    if (!QSslSocket::supportsSsl()) {
+        if (sslAvailable) {
+            LogManager::instance().logError(tr("推送失败：当前环境不支持HTTPS，请确认已安装 OpenSSL 库 (例如 libcrypto-1_1-x64.dll 和 libssl-1_1-x64.dll)") );
+        }
+        sslAvailable = false;
+        return false;
+    }
+
+    if (!sslAvailable) {
+        LogManager::instance().logInfo(tr("已检测到HTTPS支持恢复，可正常发送推送"));
+    }
+    sslAvailable = true;
+    return true;
 }
 

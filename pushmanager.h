@@ -5,6 +5,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QSslSocket>
 #include "configmanager.h"
 
 class PushManager : public QObject
@@ -28,12 +29,14 @@ signals:
 private:
     bool postMessage(const QString &text);
     bool isEnabled() const;
+    bool ensureSslAvailable();
 
     ConfigManager *cfg {nullptr};
     PushConfig current;
     QNetworkAccessManager network;
     int consecutiveFailures {0};
     const int retryTimes {3};
+    bool sslAvailable {true};
 };
 
 #endif // PUSHMANAGER_H
