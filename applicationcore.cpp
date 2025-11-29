@@ -16,6 +16,7 @@ ApplicationCore::ApplicationCore(QObject *parent)
     chartView->chart()->addSeries(series1);
     chartView->chart()->createDefaultAxes();
 
+    push = new PushManager(&cfg, this);
     connect(&pump, &Cp2102PumpController::safetyTriggered, this, &ApplicationCore::onPumpSafety);
 }
 
@@ -30,6 +31,9 @@ void ApplicationCore::initialize()
     if (!cfg.load(defaultConfigPath)) {
         cfg.restoreDefaults();
         cfg.save(defaultConfigPath);
+    }
+    if (push) {
+        push->reloadConfig();
     }
     cam0.open(cfg.camera(0).index);
     cam1.open(cfg.camera(1).index);
@@ -59,6 +63,11 @@ CalibrationManager *ApplicationCore::calibration()
 QChartView *ApplicationCore::trendChart()
 {
     return chartView;
+}
+
+PushManager *ApplicationCore::pushManager()
+{
+    return push;
 }
 
 void ApplicationCore::startCameras()
@@ -210,6 +219,9 @@ void ApplicationCore::processPumpLogic(int id, const WidthResult &result, const 
     pump.pulseLow(pulseDuration);
     lastPulseMs = now;
     pumpTriggerCount[id] = 0;
+    if (push) {
+        push->sendPumpTriggered(id, result.widthMM);
+    }
 }
 
 void ApplicationCore::appendTrend(int id, double widthMM)
