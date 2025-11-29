@@ -165,6 +165,27 @@ void ApplicationCore::reloadPumpConfig()
     }
 }
 
+bool ApplicationCore::testPumpPulse(const QString &portName, int pulseMs)
+{
+    const int duration = qBound(50, pulseMs, 20000);
+    if (portName.isEmpty()) {
+        return false;
+    }
+
+    Cp2102PumpController tester;
+    tester.setSafetyLimits(cfg.config().safetyMaxEvents, cfg.config().safetyWindowMs);
+    if (!tester.open(portName)) {
+        return false;
+    }
+
+    tester.forceHigh();
+    tester.pulseLow(duration);
+    tester.forceHigh();
+    tester.close();
+    LogManager::instance().logInfo(tr("Pump test pulse sent on %1 for %2 ms").arg(portName).arg(duration));
+    return true;
+}
+
 void ApplicationCore::processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfgCam)
 {
     Q_UNUSED(cfgCam)

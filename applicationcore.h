@@ -29,6 +29,7 @@ public:
     void reloadCamerasFromConfig();
     void reloadPumpConfig();
     QString configPath() const { return defaultConfigPath; }
+    bool testPumpPulse(const QString &portName, int pulseMs);
 
 signals:
     void cameraFrame(int id, const QImage &img);
