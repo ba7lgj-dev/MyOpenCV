@@ -1,5 +1,6 @@
 #include "pushmanager.h"
 #include "logmanager.h"
+#include <QDebug>
 #include <QEventLoop>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -91,18 +92,23 @@ bool PushManager::postMessage(const QString &text, bool countFailure)
 
         QVariant statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
         QByteArray body = reply->readAll();
+        const QString bodyText = QString::fromUtf8(body);
         if (reply->error() == QNetworkReply::NoError && statusCode.toInt() / 100 == 2) {
-            LogManager::instance().logInfo(tr("推送成功（HTTP %1）：%2").arg(statusCode.toInt()).arg(QString::fromUtf8(body)));
+            const QString successMsg = tr("推送成功（HTTP %1）：%2").arg(statusCode.toInt()).arg(bodyText);
+            LogManager::instance().logInfo(successMsg);
+            qInfo().noquote() << successMsg;
             success = true;
             reply->deleteLater();
             break;
         }
-        LogManager::instance().logWarn(tr("推送失败（尝试 %1/%2，HTTP %3）：%4 | 响应：%5")
-                                       .arg(attempt + 1)
-                                       .arg(retryTimes)
-                                       .arg(statusCode.toInt())
-                                       .arg(reply->errorString())
-                                       .arg(QString::fromUtf8(body)));
+        const QString errorMsg = tr("推送失败（尝试 %1/%2，HTTP %3）：%4 | 响应：%5")
+                                    .arg(attempt + 1)
+                                    .arg(retryTimes)
+                                    .arg(statusCode.toInt())
+                                    .arg(reply->errorString())
+                                    .arg(bodyText);
+        LogManager::instance().logWarn(errorMsg);
+        qWarning().noquote() << errorMsg;
         reply->deleteLater();
     }
 
