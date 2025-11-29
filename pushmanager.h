@@ -6,6 +6,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QSslSocket>
+#include <QDebug>
 #include "configmanager.h"
 
 class PushManager : public QObject

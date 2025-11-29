@@ -56,6 +56,7 @@ bool PushManager::sendCustomMessage(const QString &text, bool countFailure)
 
 bool PushManager::postMessage(const QString &text, bool countFailure)
 {
+    qDebug()<< QSslSocket::sslLibraryBuildVersionString();
     if (!isEnabled()) {
         if (countFailure) {
             consecutiveFailures = 0;
@@ -128,6 +129,7 @@ bool PushManager::postMessage(const QString &text, bool countFailure)
 
 bool PushManager::ensureSslAvailable()
 {
+    qDebug()<< QSslSocket::sslLibraryBuildVersionString();
     if (!QSslSocket::supportsSsl()) {
         if (sslAvailable) {
             LogManager::instance().logError(tr("推送失败：当前环境不支持HTTPS，请确认已安装 OpenSSL 库 (例如 libcrypto-1_1-x64.dll 和 libssl-1_1-x64.dll)") );
