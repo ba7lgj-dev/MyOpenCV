@@ -48,25 +48,29 @@ void PushManager::sendPumpTriggered(int cameraId, double widthMm)
     postMessage(tr("自动加气已触发，摄像头%1 当前宽度 %2 mm").arg(cameraId).arg(widthMm, 0, 'f', 2));
 }
 
-bool PushManager::sendCustomMessage(const QString &text)
+bool PushManager::sendCustomMessage(const QString &text, bool countFailure)
 {
-    return postMessage(text);
+    return postMessage(text, countFailure);
 }
 
-bool PushManager::postMessage(const QString &text)
+bool PushManager::postMessage(const QString &text, bool countFailure)
 {
     if (!isEnabled()) {
-        consecutiveFailures = 0;
-        emit statusUpdated(consecutiveFailures);
+        if (countFailure) {
+            consecutiveFailures = 0;
+            emit statusUpdated(consecutiveFailures);
+        }
         return false;
     }
 
     if (!ensureSslAvailable()) {
-        consecutiveFailures++;
-        if (consecutiveFailures >= current.maxFailures) {
-            emit consecutiveFailuresExceeded(consecutiveFailures);
+        if (countFailure) {
+            consecutiveFailures++;
+            if (consecutiveFailures >= current.maxFailures) {
+                emit consecutiveFailuresExceeded(consecutiveFailures);
+            }
+            emit statusUpdated(consecutiveFailures);
         }
-        emit statusUpdated(consecutiveFailures);
         return false;
     }
 
@@ -102,15 +106,17 @@ bool PushManager::postMessage(const QString &text)
         reply->deleteLater();
     }
 
-    if (success) {
-        consecutiveFailures = 0;
-    } else {
-        consecutiveFailures++;
-        if (consecutiveFailures >= current.maxFailures) {
-            emit consecutiveFailuresExceeded(consecutiveFailures);
+    if (countFailure) {
+        if (success) {
+            consecutiveFailures = 0;
+        } else {
+            consecutiveFailures++;
+            if (consecutiveFailures >= current.maxFailures) {
+                emit consecutiveFailuresExceeded(consecutiveFailures);
+            }
         }
+        emit statusUpdated(consecutiveFailures);
     }
-    emit statusUpdated(consecutiveFailures);
     return success;
 }
 
