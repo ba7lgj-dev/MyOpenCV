@@ -132,7 +132,9 @@ void AutoPumpController::startPump(int cameraId, double currentWidth)
 
 void AutoPumpController::finishSuccess(double width)
 {
-    const QString msg = tr("Auto pump success: width=%1 stopThreshold=%2").arg(width).arg(stopThreshold);
+    const QString msg = tr("Auto pump success: width=%1cm stopThreshold=%2cm")
+                            .arg(width / 10.0, 0, 'f', 2)
+                            .arg(stopThreshold / 10.0, 0, 'f', 2);
     LogManager::instance().logInfo(msg);
     emit statusMessage(msg);
     changeState(State::Cooling, tr("enter cooldown"));

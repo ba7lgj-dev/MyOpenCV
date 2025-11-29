@@ -48,7 +48,7 @@ bool PushManager::sendException(const QString &key, const QString &errorMsg)
 
 void PushManager::sendPumpTriggered(int cameraId, double widthMm)
 {
-    postMessage(tr("自动加气已触发，摄像头%1 当前宽度 %2 mm").arg(cameraId).arg(widthMm, 0, 'f', 2));
+    postMessage(tr("自动加气已触发，摄像头%1 当前宽度 %2 cm").arg(cameraId).arg(widthMm / 10.0, 0, 'f', 2));
 }
 
 bool PushManager::sendCustomMessage(const QString &text, bool countFailure)

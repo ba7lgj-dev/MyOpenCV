@@ -13,6 +13,7 @@
 #include <QSerialPortInfo>
 #include <QGroupBox>
 #include <QPoint>
+#include <cmath>
 
 xingaodaApp::xingaodaApp(QWidget *parent)
     : QMainWindow(parent)
@@ -33,7 +34,7 @@ xingaodaApp::xingaodaApp(QWidget *parent)
     if (fusion == QLatin1String("min")) fusionIdx = 1;
     else if (fusion == QLatin1String("max")) fusionIdx = 2;
     ui->comboFusionStrategy->setCurrentIndex(fusionIdx);
-    updateFusionLabels(core.fusedWidthMM());
+    updateFusionLabels(core.fusedWidthMM() / 10.0);
 
     pushStatusLabel = new QLabel(tr("推送未开启"), this);
     statusBar()->addPermanentWidget(pushStatusLabel);
@@ -83,10 +84,10 @@ void xingaodaApp::setupConnections()
 
     connect(ui->spinPumpThreshold, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &xingaodaApp::onPumpThresholdChanged);
     connect(ui->spinPumpStopThreshold, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &xingaodaApp::onPumpStopThresholdChanged);
-    connect(ui->spinPumpDuration, qOverload<int>(&QSpinBox::valueChanged), this, &xingaodaApp::onPumpDurationChanged);
-    connect(ui->spinPrecheck, qOverload<int>(&QSpinBox::valueChanged), this, &xingaodaApp::onPumpPrecheckChanged);
-    connect(ui->spinMonitor, qOverload<int>(&QSpinBox::valueChanged), this, &xingaodaApp::onPumpMonitorChanged);
-    connect(ui->spinCooldown, qOverload<int>(&QSpinBox::valueChanged), this, &xingaodaApp::onPumpCooldownChanged);
+    connect(ui->spinPumpDuration, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &xingaodaApp::onPumpDurationChanged);
+    connect(ui->spinPrecheck, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &xingaodaApp::onPumpPrecheckChanged);
+    connect(ui->spinMonitor, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &xingaodaApp::onPumpMonitorChanged);
+    connect(ui->spinCooldown, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &xingaodaApp::onPumpCooldownChanged);
     connect(ui->spinMinInflation, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &xingaodaApp::onPumpMinInflationChanged);
     connect(ui->comboPumpPort, &QComboBox::currentTextChanged, this, &xingaodaApp::onPumpPortChanged);
 
@@ -132,7 +133,8 @@ void xingaodaApp::onStop()
 void xingaodaApp::onCalibrateAll()
 {
     QString error;
-    if (!core.calibrateAllCameras(ui->spinRealWidth->value(), error)) {
+    const double realWidthMm = ui->spinRealWidth->value() * 10.0;
+    if (!core.calibrateAllCameras(realWidthMm, error)) {
         onMessage(error);
     } else {
         onMessage(tr("宽度校准完成"));
@@ -295,7 +297,7 @@ void xingaodaApp::onFusionStrategyChanged(int idx)
         strategy = QLatin1String("max");
     }
     core.config()->setFusionStrategy(strategy);
-    updateFusionLabels(core.fusedWidthMM());
+    updateFusionLabels(core.fusedWidthMM() / 10.0);
 }
 
 void xingaodaApp::onCameraFrame(int id, const QImage &img)
@@ -311,14 +313,14 @@ void xingaodaApp::onWidthUpdated(int id, const WidthResult &result)
 {
     Q_UNUSED(id)
     lastWidth[id] = result;
-    updateFusionLabels(core.fusedWidthMM());
+    updateFusionLabels(core.fusedWidthMM() / 10.0);
 }
 
 void xingaodaApp::onFusionUpdated(double fusedMm, double cam0Mm, double cam1Mm)
 {
-    ui->labelCam0WidthValue->setText(cam0Mm > 0 ? QString::number(cam0Mm, 'f', 1) + tr(" mm") : QStringLiteral("--"));
-    ui->labelCam1WidthValue->setText(cam1Mm > 0 ? QString::number(cam1Mm, 'f', 1) + tr(" mm") : QStringLiteral("--"));
-    updateFusionLabels(fusedMm);
+    ui->labelCam0WidthValue->setText(cam0Mm > 0 ? QString::number(cam0Mm / 10.0, 'f', 2) + tr(" cm") : QStringLiteral("--"));
+    ui->labelCam1WidthValue->setText(cam1Mm > 0 ? QString::number(cam1Mm / 10.0, 'f', 2) + tr(" cm") : QStringLiteral("--"));
+    updateFusionLabels(fusedMm / 10.0);
 }
 void xingaodaApp::onMessage(const QString &msg)
 {
@@ -334,43 +336,43 @@ void xingaodaApp::onSafety()
 
 void xingaodaApp::onPumpThresholdChanged(double value)
 {
-    core.config()->setAutoStartThresholdMM(value);
+    core.config()->setAutoStartThresholdMM(value * 10.0);
     core.reloadPumpConfig();
 }
 
 void xingaodaApp::onPumpStopThresholdChanged(double value)
 {
-    core.config()->setAutoStopThresholdMM(value);
+    core.config()->setAutoStopThresholdMM(value * 10.0);
     core.reloadPumpConfig();
 }
 
-void xingaodaApp::onPumpDurationChanged(int value)
+void xingaodaApp::onPumpDurationChanged(double value)
 {
-    core.config()->setPumpDurationMs(value);
+    core.config()->setPumpDurationMs(static_cast<int>(std::lround(value * 1000.0)));
     core.reloadPumpConfig();
 }
 
-void xingaodaApp::onPumpPrecheckChanged(int value)
+void xingaodaApp::onPumpPrecheckChanged(double value)
 {
-    core.config()->setAutoPrecheckMs(value);
+    core.config()->setAutoPrecheckMs(static_cast<int>(std::lround(value * 1000.0)));
     core.reloadPumpConfig();
 }
 
-void xingaodaApp::onPumpMonitorChanged(int value)
+void xingaodaApp::onPumpMonitorChanged(double value)
 {
-    core.config()->setAutoMonitorMs(value);
+    core.config()->setAutoMonitorMs(static_cast<int>(std::lround(value * 1000.0)));
     core.reloadPumpConfig();
 }
 
-void xingaodaApp::onPumpCooldownChanged(int value)
+void xingaodaApp::onPumpCooldownChanged(double value)
 {
-    core.config()->setAutoCooldownMs(value);
+    core.config()->setAutoCooldownMs(static_cast<int>(std::lround(value * 1000.0)));
     core.reloadPumpConfig();
 }
 
 void xingaodaApp::onPumpMinInflationChanged(double value)
 {
-    core.config()->setMinInflationMM(value);
+    core.config()->setMinInflationMM(value * 10.0);
     core.reloadPumpConfig();
 }
 
@@ -451,13 +453,13 @@ void xingaodaApp::syncPumpUi()
 {
     const auto cfgApp = core.config()->config();
     ui->chkAutoPump->setChecked(cfgApp.autoPumpEnabled);
-    ui->spinPumpThreshold->setValue(cfgApp.autoStartThresholdMM);
-    ui->spinPumpStopThreshold->setValue(cfgApp.autoStopThresholdMM);
-    ui->spinPumpDuration->setValue(cfgApp.pumpDurationMs);
-    ui->spinPrecheck->setValue(cfgApp.autoPrecheckMs);
-    ui->spinMonitor->setValue(cfgApp.autoMonitorMs);
-    ui->spinCooldown->setValue(cfgApp.autoCooldownMs);
-    ui->spinMinInflation->setValue(cfgApp.autoMinInflationMM);
+    ui->spinPumpThreshold->setValue(cfgApp.autoStartThresholdMM / 10.0);
+    ui->spinPumpStopThreshold->setValue(cfgApp.autoStopThresholdMM / 10.0);
+    ui->spinPumpDuration->setValue(cfgApp.pumpDurationMs / 1000.0);
+    ui->spinPrecheck->setValue(cfgApp.autoPrecheckMs / 1000.0);
+    ui->spinMonitor->setValue(cfgApp.autoMonitorMs / 1000.0);
+    ui->spinCooldown->setValue(cfgApp.autoCooldownMs / 1000.0);
+    ui->spinMinInflation->setValue(cfgApp.autoMinInflationMM / 10.0);
     populatePumpPorts();
     int idx = ui->comboPumpPort->findText(cfgApp.pumpPort);
     if (idx < 0 && !cfgApp.pumpPort.isEmpty()) {
@@ -481,10 +483,10 @@ void xingaodaApp::syncPushUi()
     onPushStatusChanged(0);
 }
 
-void xingaodaApp::updateFusionLabels(double fusedMm)
+void xingaodaApp::updateFusionLabels(double fusedCm)
 {
-    if (fusedMm > 0) {
-        ui->labelFusionValue->setText(tr("融合宽度 %1 mm").arg(fusedMm, 0, 'f', 1));
+    if (fusedCm > 0) {
+        ui->labelFusionValue->setText(tr("融合宽度 %1 cm").arg(fusedCm, 0, 'f', 2));
     } else {
         ui->labelFusionValue->setText(tr("融合宽度 --"));
     }
@@ -583,7 +585,8 @@ QImage xingaodaApp::drawOverlay(int id, const QImage &src)
     QFontMetrics fmBig(bigFont);
 
     QString pixelText = lastWidth[id].valid ? tr("像素宽度: %1 px").arg(lastWidth[id].widthPixels, 0, 'f', 1) : tr("像素宽度: --");
-    QString realText = lastWidth[id].valid ? tr("真实宽度: %1 mm").arg(lastWidth[id].widthMM, 0, 'f', 1) : tr("真实宽度: --");
+    const double widthCm = lastWidth[id].valid ? lastWidth[id].widthMM / 10.0 : 0.0;
+    QString realText = lastWidth[id].valid ? tr("真实宽度: %1 cm").arg(widthCm, 0, 'f', 2) : tr("真实宽度: --");
     QString bandText = tr("检测线高度: %1 px").arg(band);
 
     int infoWidth = qMax(qMax(fm.horizontalAdvance(pixelText), fm.horizontalAdvance(bandText)), fmBig.horizontalAdvance(realText)) + 16;

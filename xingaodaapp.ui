@@ -294,7 +294,7 @@
            <item row="0" column="0">
             <widget class="QLabel" name="labelCam0Width">
              <property name="text">
-              <string>摄像头0宽度(mm)</string>
+              <string>摄像头0宽度(cm)</string>
              </property>
             </widget>
            </item>
@@ -308,7 +308,7 @@
            <item row="1" column="0">
             <widget class="QLabel" name="labelCam1Width">
              <property name="text">
-              <string>摄像头1宽度(mm)</string>
+              <string>摄像头1宽度(cm)</string>
              </property>
             </widget>
            </item>
@@ -347,7 +347,7 @@
             <string notr="true">font-size: 36px; font-weight: bold; color: #d32f2f;</string>
            </property>
            <property name="text">
-            <string>融合宽度 -- mm</string>
+            <string>融合宽度 -- cm</string>
            </property>
           </widget>
          </item>
@@ -367,17 +367,20 @@
          <item row="0" column="0">
           <widget class="QLabel" name="labelRealWidth">
            <property name="text">
-            <string>当前物料真实宽度(mm)</string>
+            <string>当前物料真实宽度(cm)</string>
            </property>
           </widget>
          </item>
          <item row="0" column="1">
           <widget class="QDoubleSpinBox" name="spinRealWidth">
            <property name="maximum">
-            <double>10000.000000000000000</double>
+            <double>1000.000000000000000</double>
            </property>
            <property name="value">
-            <double>800.000000000000000</double>
+            <double>80.000000000000000</double>
+           </property>
+           <property name="suffix">
+            <string> cm</string>
            </property>
           </widget>
          </item>
@@ -391,7 +394,7 @@
          <item row="1" column="0" colspan="3">
           <widget class="QLabel" name="labelCalibrationInfo">
            <property name="text">
-            <string>输入一次即可同步所有摄像头 mm/px</string>
+            <string>输入一次即可同步所有摄像头 cm/px</string>
            </property>
           </widget>
          </item>
@@ -424,108 +427,141 @@
          <item row="1" column="0">
           <widget class="QLabel" name="labelPumpDuration">
            <property name="text">
-            <string>加气时长(ms)</string>
+            <string>加气时长(s)</string>
            </property>
           </widget>
          </item>
          <item row="1" column="1">
-          <widget class="QSpinBox" name="spinPumpDuration">
-           <property name="minimum">50</property>
-           <property name="maximum">20000</property>
+          <widget class="QDoubleSpinBox" name="spinPumpDuration">
+           <property name="minimum">0.050000000000000</property>
+           <property name="maximum">20.000000000000000</property>
+           <property name="decimals">
+            <number>3</number>
+           </property>
+           <property name="suffix">
+            <string> s</string>
+           </property>
           </widget>
          </item>
          <item row="1" column="2">
           <widget class="QLabel" name="labelPumpThreshold">
            <property name="text">
-            <string>启动阈值(mm)</string>
+           <string>启动阈值(cm)</string>
            </property>
           </widget>
          </item>
          <item row="1" column="3">
           <widget class="QDoubleSpinBox" name="spinPumpThreshold">
            <property name="minimum">
-            <double>10.000000000000000</double>
+            <double>1.000000000000000</double>
            </property>
            <property name="maximum">
-            <double>20000.000000000000000</double>
+            <double>2000.000000000000000</double>
            </property>
            <property name="decimals">
-            <number>1</number>
+            <number>2</number>
+           </property>
+           <property name="suffix">
+            <string> cm</string>
            </property>
           </widget>
          </item>
          <item row="2" column="0">
           <widget class="QLabel" name="labelPumpStop">
            <property name="text">
-            <string>停止阈值(mm)</string>
+           <string>停止阈值(cm)</string>
            </property>
           </widget>
          </item>
          <item row="2" column="1">
           <widget class="QDoubleSpinBox" name="spinPumpStopThreshold">
            <property name="minimum">
-            <double>10.000000000000000</double>
+            <double>1.000000000000000</double>
            </property>
            <property name="maximum">
-            <double>20000.000000000000000</double>
+            <double>2000.000000000000000</double>
            </property>
            <property name="decimals">
-            <number>1</number>
+            <number>2</number>
+           </property>
+           <property name="suffix">
+            <string> cm</string>
            </property>
           </widget>
          </item>
          <item row="2" column="2">
           <widget class="QLabel" name="labelPrecheck">
            <property name="text">
-            <string>宽度预判时间(ms)</string>
+           <string>宽度预判时间(s)</string>
            </property>
           </widget>
          </item>
          <item row="2" column="3">
-          <widget class="QSpinBox" name="spinPrecheck">
-           <property name="minimum">1000</property>
-           <property name="maximum">60000</property>
+          <widget class="QDoubleSpinBox" name="spinPrecheck">
+           <property name="minimum">1.000000000000000</property>
+           <property name="maximum">60.000000000000000</property>
+           <property name="decimals">
+            <number>3</number>
+           </property>
+           <property name="suffix">
+            <string> s</string>
+           </property>
           </widget>
          </item>
          <item row="3" column="0">
           <widget class="QLabel" name="labelMonitor">
            <property name="text">
-            <string>监控时间(ms)</string>
+           <string>监控时间(s)</string>
            </property>
           </widget>
          </item>
          <item row="3" column="1">
-          <widget class="QSpinBox" name="spinMonitor">
-           <property name="minimum">1000</property>
-           <property name="maximum">10000</property>
+          <widget class="QDoubleSpinBox" name="spinMonitor">
+           <property name="minimum">1.000000000000000</property>
+           <property name="maximum">10.000000000000000</property>
+           <property name="decimals">
+            <number>3</number>
+           </property>
+           <property name="suffix">
+            <string> s</string>
+           </property>
           </widget>
          </item>
          <item row="3" column="2">
           <widget class="QLabel" name="labelCooldown">
            <property name="text">
-            <string>冷却时间(ms)</string>
+           <string>冷却时间(s)</string>
            </property>
           </widget>
          </item>
          <item row="3" column="3">
-          <widget class="QSpinBox" name="spinCooldown">
-           <property name="maximum">600000</property>
+          <widget class="QDoubleSpinBox" name="spinCooldown">
+           <property name="maximum">600.000000000000000</property>
+           <property name="decimals">
+            <number>3</number>
+           </property>
+           <property name="suffix">
+            <string> s</string>
+           </property>
           </widget>
          </item>
          <item row="4" column="0">
           <widget class="QLabel" name="labelMinInflation">
            <property name="text">
-            <string>最小膨胀(mm)</string>
+           <string>最小膨胀(cm)</string>
            </property>
           </widget>
          </item>
          <item row="4" column="1">
           <widget class="QDoubleSpinBox" name="spinMinInflation">
            <property name="maximum">
-            <double>5000.000000000000000</double>
+            <double>500.000000000000000</double>
            </property>
            <property name="decimals">
-            <number>1</number>
+            <number>2</number>
+           </property>
+           <property name="suffix">
+            <string> cm</string>
            </property>
           </widget>
          </item>

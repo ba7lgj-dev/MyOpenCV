@@ -17,6 +17,12 @@ ApplicationCore::ApplicationCore(QObject *parent)
     chartView->chart()->addSeries(series0);
     chartView->chart()->addSeries(series1);
     chartView->chart()->createDefaultAxes();
+    if (!chartView->chart()->axes(Qt::Horizontal).isEmpty()) {
+        chartView->chart()->axes(Qt::Horizontal).first()->setTitleText(tr("时间 (s)"));
+    }
+    if (!chartView->chart()->axes(Qt::Vertical).isEmpty()) {
+        chartView->chart()->axes(Qt::Vertical).first()->setTitleText(tr("宽度 (cm)"));
+    }
 
     push = new PushManager(&cfg, this);
     autoPumpController = new AutoPumpController(&pump, push, &cfg);
@@ -326,12 +332,14 @@ int ApplicationCore::chooseFusionCameraId() const
 void ApplicationCore::appendTrend(int id, double widthMM)
 {
     qint64 x = QDateTime::currentMSecsSinceEpoch();
+    const double xSeconds = x / 1000.0;
+    const double widthCm = widthMM / 10.0;
     QLineSeries *series = id == 0 ? series0 : series1;
-    series->append(x, widthMM);
+    series->append(xSeconds, widthCm);
     while (series->count() > 200) {
         series->removePoints(0, 1);
     }
-    chartView->chart()->axes(Qt::Horizontal).first()->setRange(x - 60000, x);
+    chartView->chart()->axes(Qt::Horizontal).first()->setRange(xSeconds - 60.0, xSeconds);
 }
 
 void ApplicationCore::onPumpSafety(const QString &msg)
