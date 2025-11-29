@@ -1,0 +1,6 @@
+{
+  "url": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=b3b26998-1042-472e-af7d-2b0649233be",
+  "enabled": true,
+  "maxFailures": 3,
+  "templateText": "系统通知：%1"
+}

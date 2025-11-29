@@ -12,11 +12,30 @@ ApplicationCore::ApplicationCore(QObject *parent)
     chartView->chart()->legend()->setVisible(true);
     series0->setName("Camera0");
     series1->setName("Camera1");
+    xAxis = new QValueAxis(chartView);
+    yAxis = new QValueAxis(chartView);
+    xAxis->setTitleText(tr("时间 (s)"));
+    xAxis->setLabelFormat("%.0f");
+    xAxis->setRange(0, 60);
+    xAxis->setTickCount(7);
+    yAxis->setTitleText(tr("宽度 (mm)"));
+    yAxis->setLabelFormat("%.1f");
+    yAxis->setRange(0, 1200);
+
     chartView->chart()->addSeries(series0);
     chartView->chart()->addSeries(series1);
-    chartView->chart()->createDefaultAxes();
+    chartView->chart()->addAxis(xAxis, Qt::AlignBottom);
+    chartView->chart()->addAxis(yAxis, Qt::AlignLeft);
+    series0->attachAxis(xAxis);
+    series1->attachAxis(xAxis);
+    series0->attachAxis(yAxis);
+    series1->attachAxis(yAxis);
+
+    push = new PushNotifier(&cfg, this);
 
     connect(&pump, &Cp2102PumpController::safetyTriggered, this, &ApplicationCore::onPumpSafety);
+    connect(push, &PushNotifier::pushFailed, this, &ApplicationCore::pushFailed);
+    connect(push, &PushNotifier::pushSucceeded, this, &ApplicationCore::pushRecovered);
 }
 
 ApplicationCore::~ApplicationCore()
@@ -31,6 +50,7 @@ void ApplicationCore::initialize()
         cfg.restoreDefaults();
         cfg.save(defaultConfigPath);
     }
+    push->reload();
     cam0.open(cfg.camera(0).index);
     cam1.open(cfg.camera(1).index);
     cam0.setConfig(cfg.camera(0));
@@ -44,6 +64,7 @@ void ApplicationCore::initialize()
     connect(&cam1, &UsbCamera::frameReady, [this](const QImage &img){ emit cameraFrame(1, img);});
     connect(&cam0, &UsbCamera::cameraError, this, [this](const QString &msg){ emit message(msg); LogManager::instance().logWarn(msg);});
     connect(&cam1, &UsbCamera::cameraError, this, [this](const QString &msg){ emit message(msg); LogManager::instance().logWarn(msg);});
+    trendStartMs = QDateTime::currentMSecsSinceEpoch();
 }
 
 ConfigManager *ApplicationCore::config()
@@ -210,17 +231,33 @@ void ApplicationCore::processPumpLogic(int id, const WidthResult &result, const 
     pump.pulseLow(pulseDuration);
     lastPulseMs = now;
     pumpTriggerCount[id] = 0;
+    if (push) {
+        push->sendPumpTriggered(result.widthMM);
+    }
 }
 
 void ApplicationCore::appendTrend(int id, double widthMM)
 {
-    qint64 x = QDateTime::currentMSecsSinceEpoch();
+    qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (trendStartMs == 0) {
+        trendStartMs = now;
+    }
+    qreal x = (now - trendStartMs) / 1000.0;
     QLineSeries *series = id == 0 ? series0 : series1;
     series->append(x, widthMM);
-    while (series->count() > 200) {
+    while (series->count() > 0 && series->pointsVector().first().x() < x - 60) {
         series->removePoints(0, 1);
     }
-    chartView->chart()->axes(Qt::Horizontal).first()->setRange(x - 60000, x);
+    if (xAxis) {
+        xAxis->setRange(qMax<qreal>(0, x - 60), x + 1);
+    }
+    if (yAxis) {
+        const double targetMax = qMax(widthMM * 1.2, 100.0);
+        const double currentMax = yAxis->max();
+        if (targetMax > currentMax || widthMM < yAxis->min()) {
+            yAxis->setRange(0, qMax(targetMax, currentMax));
+        }
+    }
 }
 
 void ApplicationCore::onPumpSafety(const QString &msg)
@@ -233,5 +270,29 @@ void ApplicationCore::onPumpSafety(const QString &msg)
 void ApplicationCore::applyPumpSettings()
 {
     pump.setSafetyLimits(cfg.config().safetyMaxEvents, cfg.config().safetyWindowMs);
+}
+
+void ApplicationCore::notifyStartup()
+{
+    if (push) {
+        LogManager::instance().logInfo(tr("系统启动推送"));
+        push->sendStartup();
+    }
+}
+
+void ApplicationCore::notifyShutdown()
+{
+    if (push) {
+        LogManager::instance().logInfo(tr("系统关闭推送"));
+        push->sendShutdown();
+    }
+}
+
+void ApplicationCore::notifyException(const QString &msg)
+{
+    if (push) {
+        LogManager::instance().logError(tr("系统异常推送：%1").arg(msg));
+        push->sendException(msg);
+    }
 }
 

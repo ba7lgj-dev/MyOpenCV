@@ -10,23 +10,34 @@
 #include <QPen>
 #include <QtGlobal>
 #include <QDoubleSpinBox>
+#include <QCloseEvent>
 
 xingaodaApp::xingaodaApp(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::xingaodaApp)
 {
     ui->setupUi(this);
+    initRotationCombos();
     ui->chartView->setChart(core.trendChart()->chart());
     setupConnections();
     core.initialize();
+    core.notifyStartup();
     syncCameraUi(0);
     syncCameraUi(1);
     ui->chkAutoPump->setChecked(core.config()->config().autoPumpEnabled);
     ui->spinPumpThreshold->setValue(core.config()->config().pumpThresholdMM);
+    ui->chkPushEnabled->setChecked(core.config()->pushConfig().enabled);
+    ui->editPushUrl->setText(core.config()->pushConfig().url);
+    onPushRecovered();
+    updateWidthSummary();
 }
 
 xingaodaApp::~xingaodaApp()
 {
+    if (!shutdownNotified) {
+        core.notifyShutdown();
+        shutdownNotified = true;
+    }
     core.stopCameras();
     delete ui;
 }
@@ -52,11 +63,16 @@ void xingaodaApp::setupConnections()
     connect(ui->actionCameraManager, &QAction::triggered, this, &xingaodaApp::onCameraManager);
     connect(ui->actionPumpSettings, &QAction::triggered, this, &xingaodaApp::onPumpSettings);
     connect(ui->spinPumpThreshold, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &xingaodaApp::onPumpThresholdChanged);
+    connect(ui->chkPushEnabled, &QCheckBox::toggled, this, &xingaodaApp::onPushEnabled);
+    connect(ui->editPushUrl, &QLineEdit::editingFinished, this, &xingaodaApp::onPushUrlEdited);
+    connect(ui->btnTestPush, &QPushButton::clicked, this, &xingaodaApp::onTestPush);
 
     connect(&core, &ApplicationCore::cameraFrame, this, &xingaodaApp::onCameraFrame);
     connect(&core, &ApplicationCore::widthUpdated, this, &xingaodaApp::onWidthUpdated);
     connect(&core, &ApplicationCore::message, this, &xingaodaApp::onMessage);
     connect(&core, &ApplicationCore::safetyModeEnabled, this, &xingaodaApp::onSafety);
+    connect(core.pushChannel(), &PushNotifier::pushFailed, this, &xingaodaApp::onPushFailed);
+    connect(core.pushChannel(), &PushNotifier::pushRecovered, this, &xingaodaApp::onPushRecovered);
 }
 
 void xingaodaApp::onStart()
@@ -196,6 +212,7 @@ void xingaodaApp::onWidthUpdated(int id, const WidthResult &result)
 {
     lastWidth[id] = result;
     updateWidthLabel(id, result);
+    updateWidthSummary();
 }
 
 void xingaodaApp::onMessage(const QString &msg)
@@ -213,6 +230,53 @@ void xingaodaApp::onSafety()
 void xingaodaApp::onPumpThresholdChanged(double value)
 {
     core.config()->setPumpThresholdMM(value);
+}
+
+void xingaodaApp::onPushEnabled(bool enabled)
+{
+    core.config()->setPushEnabled(enabled);
+    if (enabled) {
+        core.pushChannel()->reload();
+        onPushRecovered();
+    } else {
+        ui->labelPushStatus->setStyleSheet("");
+        ui->labelPushStatus->setText(tr("推送已关闭"));
+    }
+}
+
+void xingaodaApp::onPushUrlEdited()
+{
+    const QString url = ui->editPushUrl->text().trimmed();
+    core.config()->setPushUrl(url);
+    core.pushChannel()->reload();
+    ui->labelPushStatus->setText(tr("推送地址已更新"));
+}
+
+void xingaodaApp::onTestPush()
+{
+    core.pushChannel()->sendTest(tr("测试推送"));
+}
+
+void xingaodaApp::onPushFailed(const QString &msg, int failures)
+{
+    ui->labelPushStatus->setText(msg);
+    const int maxAllowed = core.config()->pushConfig().maxFailures;
+    if (failures >= maxAllowed) {
+        ui->labelPushStatus->setStyleSheet("color:white; background-color:rgb(200,0,0); font-weight:bold;");
+    } else {
+        ui->labelPushStatus->setStyleSheet("color:rgb(200,120,0); font-weight:bold;");
+    }
+}
+
+void xingaodaApp::onPushRecovered()
+{
+    if (!core.config()->pushConfig().enabled) {
+        ui->labelPushStatus->setStyleSheet("");
+        ui->labelPushStatus->setText(tr("推送已关闭"));
+        return;
+    }
+    ui->labelPushStatus->setStyleSheet("color:rgb(0,120,0); font-weight:bold;");
+    ui->labelPushStatus->setText(tr("推送通道正常"));
 }
 
 void xingaodaApp::syncCameraUi(int id)
@@ -253,5 +317,52 @@ QImage xingaodaApp::drawOverlay(int id, const QImage &src)
         painter.drawText(QPointF(lastWidth[id].rightX - 50, 20), tr("右边界"));
     }
     return image;
+}
+
+void xingaodaApp::updateWidthSummary()
+{
+    const auto formatWidth = [](const WidthResult &r) {
+        return r.valid ? QString::number(r.widthMM, 'f', 1) + QStringLiteral(" mm") : QStringLiteral("--");
+    };
+
+    ui->labelBigWidth0->setText(tr("摄像头0\n%1").arg(formatWidth(lastWidth[0])));
+    ui->labelBigWidth1->setText(tr("摄像头1\n%1").arg(formatWidth(lastWidth[1])));
+    const double est = estimatedWidth();
+    ui->labelBigWidthEstimated->setText(est > 0 ? tr("综合预估\n%1 mm").arg(est, 0, 'f', 1) : tr("综合预估\n--"));
+}
+
+double xingaodaApp::estimatedWidth() const
+{
+    const bool v0 = lastWidth[0].valid;
+    const bool v1 = lastWidth[1].valid;
+    if (v0 && v1) {
+        const double w0 = lastWidth[0].widthMM;
+        const double w1 = lastWidth[1].widthMM;
+        const double diff = qAbs(w0 - w1);
+        const double base = (w0 + w1) / 2.0;
+        const double compensation = diff * 0.1;
+        return base + (w0 < w1 ? compensation : -compensation * 0.5);
+    }
+    if (v0) return lastWidth[0].widthMM;
+    if (v1) return lastWidth[1].widthMM;
+    return 0.0;
+}
+
+void xingaodaApp::closeEvent(QCloseEvent *event)
+{
+    if (!shutdownNotified) {
+        core.notifyShutdown();
+        shutdownNotified = true;
+    }
+    QMainWindow::closeEvent(event);
+}
+
+void xingaodaApp::initRotationCombos()
+{
+    QList<int> angles{0, 90, 180, 270};
+    for (int i = 0; i < angles.size(); ++i) {
+        ui->comboRotation0->setItemData(i, angles[i]);
+        ui->comboRotation1->setItemData(i, angles[i]);
+    }
 }
 

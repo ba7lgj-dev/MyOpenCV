@@ -75,6 +75,13 @@ public:
     CameraConfig camera(int idx) const;
     void setCameraConfig(int idx, const CameraConfig &cfg);
     PushConfig pushConfig() const;
+    void setPushEnabled(bool enabled);
+    void setPushUrl(const QString &url);
+    void setPushMaxFailures(int maxFailures);
+    void setPushTemplate(const QString &text);
+    bool loadPushOverride(const QString &path = QString());
+    bool savePushOverride(const QString &path = QString()) const;
+    QString pushConfigPath() const;
 
     static QColor colorFromJson(const QJsonValue &v, const QColor &fallback = Qt::red);
     static QJsonValue colorToJson(const QColor &c);
