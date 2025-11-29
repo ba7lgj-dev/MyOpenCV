@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QComboBox>
 #include <QSpinBox>
+#include <QDoubleSpinBox>
 #include <QLabel>
 #include "configmanager.h"
 
@@ -29,7 +30,12 @@ private:
 
     QComboBox *comboPort {nullptr};
     QSpinBox *spinDuration {nullptr};
+    QSpinBox *spinPrecheck {nullptr};
+    QSpinBox *spinMonitor {nullptr};
     QSpinBox *spinCooldown {nullptr};
+    QDoubleSpinBox *spinStartThreshold {nullptr};
+    QDoubleSpinBox *spinStopThreshold {nullptr};
+    QDoubleSpinBox *spinMinInflation {nullptr};
     QLabel *labelStatus {nullptr};
 };
 

@@ -26,7 +26,7 @@ xingaodaApp::xingaodaApp(QWidget *parent)
     syncCameraUi(0);
     syncCameraUi(1);
     ui->chkAutoPump->setChecked(core.config()->config().autoPumpEnabled);
-    ui->spinPumpThreshold->setValue(core.config()->config().pumpThresholdMM);
+    ui->spinPumpThreshold->setValue(core.config()->config().autoStartThresholdMM);
 
     pushStatusLabel = new QLabel(tr("推送未开启"), this);
     statusBar()->addPermanentWidget(pushStatusLabel);
@@ -253,7 +253,8 @@ void xingaodaApp::onSafety()
 
 void xingaodaApp::onPumpThresholdChanged(double value)
 {
-    core.config()->setPumpThresholdMM(value);
+    core.config()->setAutoStartThresholdMM(value);
+    core.reloadPumpConfig();
 }
 
 void xingaodaApp::onPushStatusChanged(int failures)

@@ -34,9 +34,9 @@ void Cp2102PumpController::close()
     }
 }
 
-void Cp2102PumpController::pulseLow(int ms)
+bool Cp2102PumpController::pulseLow(int ms)
 {
-    if (!serial.isOpen()) return;
+    if (!serial.isOpen()) return false;
     serial.setDataTerminalReady(false);
     serial.setRequestToSend(false);
     LogManager::instance().logInfo(tr("Auto pump triggered: pulse=%1ms").arg(ms));
@@ -45,6 +45,7 @@ void Cp2102PumpController::pulseLow(int ms)
     serial.setRequestToSend(true);
     pushEvent(ms);
     checkSafety();
+    return serial.error() == QSerialPort::NoError;
 }
 
 void Cp2102PumpController::forceHigh()
@@ -52,6 +53,16 @@ void Cp2102PumpController::forceHigh()
     if (!serial.isOpen()) return;
     serial.setDataTerminalReady(true);
     serial.setRequestToSend(true);
+}
+
+bool Cp2102PumpController::isOpen() const
+{
+    return serial.isOpen();
+}
+
+QString Cp2102PumpController::lastError() const
+{
+    return serial.errorString();
 }
 
 void Cp2102PumpController::setSafetyLimits(int maxEvents, int windowMs)

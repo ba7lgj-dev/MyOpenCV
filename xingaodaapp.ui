@@ -213,7 +213,7 @@
       <item row="0" column="3">
        <widget class="QLabel" name="labelPumpThreshold">
         <property name="text">
-         <string>加气阈值(mm)</string>
+         <string>启动加气阈值(mm)</string>
         </property>
        </widget>
       </item>

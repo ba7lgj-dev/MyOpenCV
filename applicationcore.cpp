@@ -17,13 +17,22 @@ ApplicationCore::ApplicationCore(QObject *parent)
     chartView->chart()->createDefaultAxes();
 
     push = new PushManager(&cfg, this);
+    autoPumpController = new AutoPumpController(&pump, push, &cfg);
+    autoPumpController->moveToThread(&autoPumpThread);
+    connect(&autoPumpThread, &QThread::finished, autoPumpController, &QObject::deleteLater);
+    autoPumpThread.start();
+    pump.moveToThread(&autoPumpThread);
+    QMetaObject::invokeMethod(autoPumpController, [this]() { autoPumpController->updateSettings(cfg.config()); }, Qt::QueuedConnection);
     connect(&pump, &Cp2102PumpController::safetyTriggered, this, &ApplicationCore::onPumpSafety);
+    connect(autoPumpController, &AutoPumpController::statusMessage, this, &ApplicationCore::message);
 }
 
 ApplicationCore::~ApplicationCore()
 {
     delete estimator;
     delete chartView;
+    autoPumpThread.quit();
+    autoPumpThread.wait();
 }
 
 void ApplicationCore::initialize()
@@ -41,6 +50,9 @@ void ApplicationCore::initialize()
     cam1.setConfig(cfg.camera(1));
     autoPump = cfg.config().autoPumpEnabled;
     applyPumpSettings();
+    if (autoPumpController) {
+        QMetaObject::invokeMethod(autoPumpController, [this]() { autoPumpController->updateSettings(cfg.config()); }, Qt::QueuedConnection);
+    }
 
     connect(&cam0, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame0);
     connect(&cam1, &UsbCamera::rawFrameReady, this, &ApplicationCore::onFrame1);
@@ -78,7 +90,8 @@ void ApplicationCore::startCameras()
         cam1.start();
     }
     if (!cfg.config().pumpPort.isEmpty()) {
-        pump.open(cfg.config().pumpPort);
+        const QString port = cfg.config().pumpPort;
+        QMetaObject::invokeMethod(&pump, [port, this]() { pump.open(port); }, Qt::BlockingQueuedConnection);
     }
 }
 
@@ -87,7 +100,7 @@ void ApplicationCore::stopCameras()
     running = false;
     cam0.stop();
     cam1.stop();
-    pump.close();
+    QMetaObject::invokeMethod(&pump, [this]() { pump.close(); }, Qt::BlockingQueuedConnection);
 }
 
 void ApplicationCore::calibrateWidth(int cameraId, double realMM)
@@ -105,8 +118,8 @@ void ApplicationCore::setAutoPumpEnabled(bool enabled)
 {
     autoPump = enabled;
     cfg.setAutoPumpEnabled(enabled);
-    if (!enabled) {
-        pumpTriggerCount[0] = pumpTriggerCount[1] = 0;
+    if (autoPumpController) {
+        QMetaObject::invokeMethod(autoPumpController, [enabled, this]() { autoPumpController->setEnabled(enabled); }, Qt::QueuedConnection);
     }
     emit message(enabled ? tr("Auto pump enabled") : tr("Auto pump disabled"));
 }
@@ -167,10 +180,16 @@ void ApplicationCore::reloadPumpConfig()
 {
     applyPumpSettings();
     if (running) {
-        pump.close();
-        if (!cfg.config().pumpPort.isEmpty()) {
-            pump.open(cfg.config().pumpPort);
-        }
+        const QString port = cfg.config().pumpPort;
+        QMetaObject::invokeMethod(&pump, [port, this]() {
+            pump.close();
+            if (!port.isEmpty()) {
+                pump.open(port);
+            }
+        }, Qt::BlockingQueuedConnection);
+    }
+    if (autoPumpController) {
+        QMetaObject::invokeMethod(autoPumpController, [this]() { autoPumpController->updateSettings(cfg.config()); }, Qt::QueuedConnection);
     }
 }
 
@@ -198,30 +217,11 @@ bool ApplicationCore::testPumpPulse(const QString &portName, int pulseMs)
 void ApplicationCore::processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfgCam)
 {
     Q_UNUSED(cfgCam)
-    const AppConfig currentConfig = cfg.config();
-    const double pumpThreshold = qBound(10.0, currentConfig.pumpThresholdMM, 10000.0);
-    const int pumpCooldown = qBound(0, currentConfig.pumpCooldownMs, 600000);
-    const int pulseDuration = qBound(50, currentConfig.pumpDurationMs, 20000);
-    if (!autoPump) {
-        pumpTriggerCount[0] = pumpTriggerCount[1] = 0;
-        return;
-    }
-    if (result.widthMM >= pumpThreshold) {
-        pumpTriggerCount[id] = 0;
-        return;
-    }
-    pumpTriggerCount[id]++;
-    if (pumpTriggerCount[id] < pumpTriggerRequirement) return;
-
-    qint64 now = QDateTime::currentMSecsSinceEpoch();
-    if (now - lastPulseMs < pumpCooldown) return;
-
-    pump.pulseLow(pulseDuration);
-    lastPulseMs = now;
-    pumpTriggerCount[id] = 0;
-    if (push) {
-        push->sendPumpTriggered(id, result.widthMM);
-    }
+    if (!autoPumpController) return;
+    const bool frameStable = true;
+    QMetaObject::invokeMethod(autoPumpController,
+                              [this, id, result, frameStable]() { autoPumpController->handleWidthSample(id, result.widthMM, frameStable); },
+                              Qt::QueuedConnection);
 }
 
 void ApplicationCore::appendTrend(int id, double widthMM)

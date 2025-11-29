@@ -13,6 +13,7 @@
 #include "pumpcontroller.h"
 #include "logmanager.h"
 #include "pushmanager.h"
+#include "autopumpcontroller.h"
 
 QT_CHARTS_USE_NAMESPACE
 
@@ -64,13 +65,13 @@ private:
     UsbCamera cam1;
     Cp2102PumpController pump;
     PushManager *push {nullptr};
+    AutoPumpController *autoPumpController {nullptr};
+    QThread autoPumpThread;
     bool autoPump {false};
-    qint64 lastPulseMs {0};
     QChartView *chartView {nullptr};
     QLineSeries *series0 {nullptr};
     QLineSeries *series1 {nullptr};
     WidthResult lastResult[2];
-    int pumpTriggerCount[2] {0, 0};
     QString defaultConfigPath {"config.json"};
     bool running {false};
     int pumpTriggerRequirement {3};

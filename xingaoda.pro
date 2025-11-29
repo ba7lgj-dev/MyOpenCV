@@ -13,6 +13,7 @@ SOURCES += \
     calibrationmanager.cpp \
     logmanager.cpp \
     pumpcontroller.cpp \
+    autopumpcontroller.cpp \
     applicationcore.cpp \
     cameramanagerdialog.cpp \
     pumpsettingsdialog.cpp \
@@ -27,6 +28,7 @@ HEADERS += \
     calibrationmanager.h \
     logmanager.h \
     pumpcontroller.h \
+    autopumpcontroller.h \
     applicationcore.h \
     cameramanagerdialog.h \
     pumpsettingsdialog.h \
