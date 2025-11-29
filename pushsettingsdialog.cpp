@@ -6,6 +6,7 @@
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QDateTime>
+#include <algorithm>
 
 PushSettingsDialog::PushSettingsDialog(ApplicationCore *core, QWidget *parent)
     : QDialog(parent), core(core)
@@ -21,14 +22,18 @@ PushSettingsDialog::PushSettingsDialog(ApplicationCore *core, QWidget *parent)
     editUrl = new QLineEdit(this);
     chkEnabled = new QCheckBox(tr("开启推送"), this);
     spinMaxFailures = new QSpinBox(this);
+    spinThrottleSeconds = new QSpinBox(this);
     labelStatus = new QLabel(this);
 
     spinMaxFailures->setRange(1, 100);
     spinMaxFailures->setSuffix(tr(" 次"));
+    spinThrottleSeconds->setRange(1, 600);
+    spinThrottleSeconds->setSuffix(tr(" 秒"));
 
     form->addRow(tr("Webhook URL"), editUrl);
     form->addRow(tr("推送开关"), chkEnabled);
     form->addRow(tr("失败阈值"), spinMaxFailures);
+    form->addRow(tr("限流窗口"), spinThrottleSeconds);
 
     auto buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     auto btnTest = new QPushButton(tr("测试推送"), this);
@@ -52,6 +57,7 @@ void PushSettingsDialog::loadConfig()
     editUrl->setText(pcfg.url);
     chkEnabled->setChecked(pcfg.enabled);
     spinMaxFailures->setValue(pcfg.maxFailures);
+    spinThrottleSeconds->setValue(std::max(1, pcfg.throttleWindowMs / 1000));
     labelStatus->setText(QString());
 }
 
@@ -66,6 +72,7 @@ void PushSettingsDialog::onTest()
     cfgTemp.url = editUrl->text();
     cfgTemp.enabled = chkEnabled->isChecked();
     cfgTemp.maxFailures = spinMaxFailures->value();
+    cfgTemp.throttleWindowMs = spinThrottleSeconds->value() * 1000;
     push->setConfig(cfgTemp);
     bool result = push->sendCustomMessage(tr("测试推送：%1").arg(QDateTime::currentDateTime().toString("HH:mm:ss")), false);
     push->reloadConfig();
@@ -83,6 +90,7 @@ void PushSettingsDialog::onAccept()
     p.url = editUrl->text();
     p.enabled = chkEnabled->isChecked();
     p.maxFailures = spinMaxFailures->value();
+    p.throttleWindowMs = spinThrottleSeconds->value() * 1000;
     cfg->setPushConfig(p);
     cfg->save(cfg->configPath());
     if (push) {

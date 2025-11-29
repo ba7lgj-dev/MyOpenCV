@@ -18,7 +18,8 @@ SOURCES += \
     cameramanagerdialog.cpp \
     pumpsettingsdialog.cpp \
     pushmanager.cpp \
-    pushsettingsdialog.cpp
+    pushsettingsdialog.cpp \
+    alertratelimiter.cpp
 
 HEADERS += \
     xingaodaapp.h \
@@ -33,7 +34,8 @@ HEADERS += \
     cameramanagerdialog.h \
     pumpsettingsdialog.h \
     pushmanager.h \
-    pushsettingsdialog.h
+    pushsettingsdialog.h \
+    alertratelimiter.h
 
 FORMS += \
     xingaodaapp.ui

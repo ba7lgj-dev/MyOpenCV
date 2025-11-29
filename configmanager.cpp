@@ -313,6 +313,7 @@ void ConfigManager::fromJson(const QJsonObject &obj)
         appConfig.push.templateText = p.value("templateText").toString();
         appConfig.push.enabled = p.value("enabled").toBool(false);
         appConfig.push.maxFailures = p.value("maxFailures").toInt(appConfig.push.maxFailures);
+        appConfig.push.throttleWindowMs = p.value("throttleWindowMs").toInt(appConfig.push.throttleWindowMs);
     }
 }
 
@@ -370,6 +371,7 @@ QJsonObject ConfigManager::toJson() const
     push.insert("templateText", appConfig.push.templateText);
     push.insert("enabled", appConfig.push.enabled);
     push.insert("maxFailures", appConfig.push.maxFailures);
+    push.insert("throttleWindowMs", appConfig.push.throttleWindowMs);
     obj.insert("push", push);
     return obj;
 }
