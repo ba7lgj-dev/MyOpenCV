@@ -93,12 +93,15 @@ void ConfigManager::setPumpDurationMs(int ms)
     }
 }
 
-void ConfigManager::setPumpThresholdMM(double mm)
+void ConfigManager::setAutoStartThresholdMM(double mm)
 {
     QString savedPath;
     {
         QMutexLocker locker(&mutex);
-        appConfig.pumpThresholdMM = qBound(10.0, mm, 10000.0);
+        appConfig.autoStartThresholdMM = qBound(10.0, mm, 10000.0);
+        if (appConfig.autoStopThresholdMM <= appConfig.autoStartThresholdMM) {
+            appConfig.autoStopThresholdMM = appConfig.autoStartThresholdMM + 1.0;
+        }
         savedPath = lastPath;
     }
     if (!savedPath.isEmpty()) {
@@ -106,12 +109,64 @@ void ConfigManager::setPumpThresholdMM(double mm)
     }
 }
 
-void ConfigManager::setPumpCooldownMs(int ms)
+void ConfigManager::setAutoStopThresholdMM(double mm)
 {
     QString savedPath;
     {
         QMutexLocker locker(&mutex);
-        appConfig.pumpCooldownMs = qBound(0, ms, 600000);
+        appConfig.autoStopThresholdMM = qBound(appConfig.autoStartThresholdMM + 1.0, mm, 15000.0);
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
+void ConfigManager::setAutoPrecheckMs(int ms)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.autoPrecheckMs = qBound(1000, ms, 60000);
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
+void ConfigManager::setAutoMonitorMs(int ms)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.autoMonitorMs = qBound(1000, ms, 10000);
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
+void ConfigManager::setAutoCooldownMs(int ms)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.autoCooldownMs = qBound(0, ms, 600000);
+        savedPath = lastPath;
+    }
+    if (!savedPath.isEmpty()) {
+        save(savedPath);
+    }
+}
+
+void ConfigManager::setMinInflationMM(double mm)
+{
+    QString savedPath;
+    {
+        QMutexLocker locker(&mutex);
+        appConfig.autoMinInflationMM = qBound(0.0, mm, 5000.0);
         savedPath = lastPath;
     }
     if (!savedPath.isEmpty()) {
@@ -188,8 +243,13 @@ void ConfigManager::fromJson(const QJsonObject &obj)
         appConfig.pumpPort = obj.value("pumpPort").toString();
     }
     appConfig.pumpDurationMs = obj.value("pumpDurationMs").toInt(appConfig.pumpDurationMs);
-    appConfig.pumpThresholdMM = obj.value("pumpThresholdMM").toDouble(appConfig.pumpThresholdMM);
-    appConfig.pumpCooldownMs = obj.value("pumpCooldownMs").toInt(appConfig.pumpCooldownMs);
+    appConfig.autoStartThresholdMM = obj.value("pumpThresholdMM").toDouble(appConfig.autoStartThresholdMM);
+    appConfig.autoStartThresholdMM = obj.value("autoStartThresholdMM").toDouble(appConfig.autoStartThresholdMM);
+    appConfig.autoStopThresholdMM = obj.value("autoStopThresholdMM").toDouble(appConfig.autoStopThresholdMM);
+    appConfig.autoPrecheckMs = obj.value("autoPrecheckMs").toInt(appConfig.autoPrecheckMs);
+    appConfig.autoMonitorMs = obj.value("autoMonitorMs").toInt(appConfig.autoMonitorMs);
+    appConfig.autoCooldownMs = obj.value("autoCooldownMs").toInt(appConfig.autoCooldownMs);
+    appConfig.autoMinInflationMM = obj.value("autoMinInflationMM").toDouble(appConfig.autoMinInflationMM);
     appConfig.autoPumpEnabled = obj.value("autoPumpEnabled").toBool(appConfig.autoPumpEnabled);
     appConfig.safetyMaxEvents = obj.value("safetyMaxEvents").toInt(appConfig.safetyMaxEvents);
     appConfig.safetyWindowMs = obj.value("safetyWindowMs").toInt(appConfig.safetyWindowMs);
@@ -244,8 +304,12 @@ QJsonObject ConfigManager::toJson() const
     QJsonObject obj;
     obj.insert("pumpPort", appConfig.pumpPort);
     obj.insert("pumpDurationMs", appConfig.pumpDurationMs);
-    obj.insert("pumpThresholdMM", appConfig.pumpThresholdMM);
-    obj.insert("pumpCooldownMs", appConfig.pumpCooldownMs);
+    obj.insert("autoStartThresholdMM", appConfig.autoStartThresholdMM);
+    obj.insert("autoStopThresholdMM", appConfig.autoStopThresholdMM);
+    obj.insert("autoPrecheckMs", appConfig.autoPrecheckMs);
+    obj.insert("autoMonitorMs", appConfig.autoMonitorMs);
+    obj.insert("autoCooldownMs", appConfig.autoCooldownMs);
+    obj.insert("autoMinInflationMM", appConfig.autoMinInflationMM);
     obj.insert("autoPumpEnabled", appConfig.autoPumpEnabled);
     obj.insert("safetyMaxEvents", appConfig.safetyMaxEvents);
     obj.insert("safetyWindowMs", appConfig.safetyWindowMs);

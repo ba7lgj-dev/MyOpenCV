@@ -21,16 +21,36 @@ PumpSettingsDialog::PumpSettingsDialog(ApplicationCore *core, QWidget *parent)
 
     comboPort = new QComboBox(this);
     spinDuration = new QSpinBox(this);
+    spinPrecheck = new QSpinBox(this);
+    spinMonitor = new QSpinBox(this);
     spinCooldown = new QSpinBox(this);
+    spinStartThreshold = new QDoubleSpinBox(this);
+    spinStopThreshold = new QDoubleSpinBox(this);
+    spinMinInflation = new QDoubleSpinBox(this);
     labelStatus = new QLabel(this);
 
     spinDuration->setRange(50, 20000);
     spinDuration->setSuffix(tr(" ms"));
+    spinPrecheck->setRange(1000, 60000);
+    spinPrecheck->setSuffix(tr(" ms"));
+    spinMonitor->setRange(1000, 10000);
+    spinMonitor->setSuffix(tr(" ms"));
     spinCooldown->setRange(0, 600000);
     spinCooldown->setSuffix(tr(" ms"));
+    spinStartThreshold->setRange(10.0, 15000.0);
+    spinStartThreshold->setDecimals(1);
+    spinStopThreshold->setRange(10.0, 20000.0);
+    spinStopThreshold->setDecimals(1);
+    spinMinInflation->setRange(0.0, 5000.0);
+    spinMinInflation->setDecimals(1);
 
     form->addRow(tr("加气串口"), comboPort);
     form->addRow(tr("单次加气时长"), spinDuration);
+    form->addRow(tr("启动加气阈值 (mm)"), spinStartThreshold);
+    form->addRow(tr("停止加气阈值 (mm)"), spinStopThreshold);
+    form->addRow(tr("预判时间"), spinPrecheck);
+    form->addRow(tr("监控窗口"), spinMonitor);
+    form->addRow(tr("最小膨胀幅度 (mm)"), spinMinInflation);
     form->addRow(tr("加气冷却时间"), spinCooldown);
 
     auto btnRefresh = new QPushButton(tr("刷新串口"), this);
@@ -85,7 +105,12 @@ void PumpSettingsDialog::loadConfig()
         comboPort->setCurrentIndex(comboPort->count() - 1);
     }
     spinDuration->setValue(appCfg.pumpDurationMs);
-    spinCooldown->setValue(appCfg.pumpCooldownMs);
+    spinStartThreshold->setValue(appCfg.autoStartThresholdMM);
+    spinStopThreshold->setValue(appCfg.autoStopThresholdMM);
+    spinPrecheck->setValue(appCfg.autoPrecheckMs);
+    spinMonitor->setValue(appCfg.autoMonitorMs);
+    spinMinInflation->setValue(appCfg.autoMinInflationMM);
+    spinCooldown->setValue(appCfg.autoCooldownMs);
 }
 
 void PumpSettingsDialog::onTestPort()
@@ -115,7 +140,12 @@ void PumpSettingsDialog::onAccept()
     }
     cfg->setPumpPort(comboPort->currentText());
     cfg->setPumpDurationMs(spinDuration->value());
-    cfg->setPumpCooldownMs(spinCooldown->value());
+    cfg->setAutoStartThresholdMM(spinStartThreshold->value());
+    cfg->setAutoStopThresholdMM(spinStopThreshold->value());
+    cfg->setAutoPrecheckMs(spinPrecheck->value());
+    cfg->setAutoMonitorMs(spinMonitor->value());
+    cfg->setMinInflationMM(spinMinInflation->value());
+    cfg->setAutoCooldownMs(spinCooldown->value());
     cfg->save(cfg->configPath());
     if (core) {
         core->reloadPumpConfig();

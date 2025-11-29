@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QSerialPort>
+#include <QString>
 #include <deque>
 
 class IPumpController : public QObject {
@@ -12,9 +13,11 @@ public:
     ~IPumpController() override = default;
     virtual bool open(const QString &portName) = 0;
     virtual void close() = 0;
+    virtual bool isOpen() const = 0;
+    virtual QString lastError() const = 0;
 
 public slots:
-    virtual void pulseLow(int ms) = 0;
+    virtual bool pulseLow(int ms) = 0;
     virtual void forceHigh() = 0;
     virtual void setSafetyLimits(int maxEvents, int windowMs) = 0;
 
@@ -34,9 +37,11 @@ public:
     ~Cp2102PumpController() override;
     bool open(const QString &portName) override;
     void close() override;
+    bool isOpen() const override;
+    QString lastError() const override;
 
 public slots:
-    void pulseLow(int ms) override;
+    bool pulseLow(int ms) override;
     void forceHigh() override;
     void setSafetyLimits(int maxEvents, int windowMs) override;
 
