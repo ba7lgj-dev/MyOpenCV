@@ -2,6 +2,7 @@
 #include "ui_xingaodaapp.h"
 #include "cameramanagerdialog.h"
 #include "pumpsettingsdialog.h"
+#include <QComboBox>
 #include <QPixmap>
 #include <QImage>
 #include <QDateTime>
@@ -9,6 +10,7 @@
 #include <QPainter>
 #include <QPen>
 #include <QtGlobal>
+#include <QList>
 #include <QDoubleSpinBox>
 
 xingaodaApp::xingaodaApp(QWidget *parent)
@@ -16,6 +18,7 @@ xingaodaApp::xingaodaApp(QWidget *parent)
     , ui(new Ui::xingaodaApp)
 {
     ui->setupUi(this);
+    setupRotationCombos();
     ui->chartView->setChart(core.trendChart()->chart());
     setupConnections();
     core.initialize();
@@ -57,6 +60,20 @@ void xingaodaApp::setupConnections()
     connect(&core, &ApplicationCore::widthUpdated, this, &xingaodaApp::onWidthUpdated);
     connect(&core, &ApplicationCore::message, this, &xingaodaApp::onMessage);
     connect(&core, &ApplicationCore::safetyModeEnabled, this, &xingaodaApp::onSafety);
+}
+
+void xingaodaApp::setupRotationCombos()
+{
+    auto initCombo = [](QComboBox *combo) {
+        const QList<int> rotations {0, 90, 180, 270};
+        combo->clear();
+        for (int deg : rotations) {
+            combo->addItem(QString::number(deg) + QLatin1String("°"), deg);
+        }
+    };
+
+    initCombo(ui->comboRotation0);
+    initCombo(ui->comboRotation1);
 }
 
 void xingaodaApp::onStart()
