@@ -6,6 +6,7 @@
 #include <QList>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
+#include <QtCharts/QValueAxis>
 #include "camera.h"
 #include "widthestimator.h"
 #include "configmanager.h"
@@ -79,6 +80,8 @@ private:
     QChartView *chartView {nullptr};
     QLineSeries *series0 {nullptr};
     QLineSeries *series1 {nullptr};
+    QValueAxis *axisX {nullptr};
+    QValueAxis *axisY {nullptr};
     WidthResult lastResult[2];
     bool cameraReady[2] {false, false};
     double fusedWidth {0.0};
@@ -86,6 +89,8 @@ private:
     QString defaultConfigPath {"config.json"};
     bool running {false};
     int pumpTriggerRequirement {3};
+    double trendWindowSeconds {120.0};
+    double trendTickSeconds {10.0};
 };
 
 #endif // APPLICATIONCORE_H
