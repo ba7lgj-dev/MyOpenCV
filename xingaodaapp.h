@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QTimer>
 #include <QColor>
+#include <QLabel>
 #include "applicationcore.h"
 #include "widthestimator.h"
 
@@ -41,6 +42,9 @@ private slots:
     void onMessage(const QString &msg);
     void onSafety();
     void onPumpThresholdChanged(double value);
+    void onPushSettings();
+    void onPushStatusChanged(int failures);
+    void onPushFailureAlarm(int failures);
 
 private:
     void setupRotationCombos();
@@ -52,5 +56,6 @@ private:
     Ui::xingaodaApp *ui;
     ApplicationCore core;
     WidthResult lastWidth[2];
+    QLabel *pushStatusLabel {nullptr};
 };
 #endif // XINGAODAAPP_H

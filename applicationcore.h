@@ -12,6 +12,7 @@
 #include "calibrationmanager.h"
 #include "pumpcontroller.h"
 #include "logmanager.h"
+#include "pushmanager.h"
 
 QT_CHARTS_USE_NAMESPACE
 
@@ -25,6 +26,7 @@ public:
     ConfigManager *config();
     CalibrationManager *calibration();
     QChartView *trendChart();
+    PushManager *pushManager();
     QList<int> availableCameraIndices(int maxIndex = 8) const;
     void reloadCamerasFromConfig();
     void reloadPumpConfig();
@@ -61,6 +63,7 @@ private:
     UsbCamera cam0;
     UsbCamera cam1;
     Cp2102PumpController pump;
+    PushManager *push {nullptr};
     bool autoPump {false};
     qint64 lastPulseMs {0};
     QChartView *chartView {nullptr};

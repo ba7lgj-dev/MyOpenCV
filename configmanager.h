@@ -75,6 +75,7 @@ public:
     CameraConfig camera(int idx) const;
     void setCameraConfig(int idx, const CameraConfig &cfg);
     PushConfig pushConfig() const;
+    void setPushConfig(const PushConfig &cfg);
 
     static QColor colorFromJson(const QJsonValue &v, const QColor &fallback = Qt::red);
     static QJsonValue colorToJson(const QColor &c);
