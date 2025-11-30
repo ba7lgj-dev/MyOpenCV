@@ -24,23 +24,55 @@
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_cam0">
          <item>
-          <widget class="QLabel" name="labelCam0">
-           <property name="minimumSize">
-            <size>
-             <width>560</width>
-             <height>360</height>
-            </size>
-           </property>
-           <property name="frameShape">
-            <enum>QFrame::Box</enum>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-           <property name="text">
-            <string>Camera 0</string>
-           </property>
-          </widget>
+          <layout class="QHBoxLayout" name="layoutCam0Display">
+           <item>
+            <widget class="QLabel" name="labelCam0">
+             <property name="minimumSize">
+              <size>
+               <width>560</width>
+               <height>360</height>
+              </size>
+             </property>
+             <property name="frameShape">
+              <enum>QFrame::Box</enum>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+             <property name="text">
+              <string>Camera 0</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSlider" name="sliderCam0Line">
+             <property name="minimumSize">
+              <size>
+               <width>30</width>
+               <height>200</height>
+              </size>
+             </property>
+             <property name="maximum">
+              <number>100</number>
+             </property>
+             <property name="value">
+              <number>50</number>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="tickPosition">
+              <enum>QSlider::TicksBothSides</enum>
+             </property>
+             <property name="tickInterval">
+              <number>10</number>
+             </property>
+             <property name="invertedAppearance">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
          <item>
           <widget class="QLabel" name="labelCam0WidthLarge">
@@ -65,23 +97,55 @@
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_cam1">
          <item>
-          <widget class="QLabel" name="labelCam1">
-           <property name="minimumSize">
-            <size>
-             <width>560</width>
-             <height>360</height>
-            </size>
-           </property>
-           <property name="frameShape">
-            <enum>QFrame::Box</enum>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-           <property name="text">
-            <string>Camera 1</string>
-           </property>
-          </widget>
+          <layout class="QHBoxLayout" name="layoutCam1Display">
+           <item>
+            <widget class="QLabel" name="labelCam1">
+             <property name="minimumSize">
+              <size>
+               <width>560</width>
+               <height>360</height>
+              </size>
+             </property>
+             <property name="frameShape">
+              <enum>QFrame::Box</enum>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+             <property name="text">
+              <string>Camera 1</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSlider" name="sliderCam1Line">
+             <property name="minimumSize">
+              <size>
+               <width>30</width>
+               <height>200</height>
+              </size>
+             </property>
+             <property name="maximum">
+              <number>100</number>
+             </property>
+             <property name="value">
+              <number>50</number>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="tickPosition">
+              <enum>QSlider::TicksBothSides</enum>
+             </property>
+             <property name="tickInterval">
+              <number>10</number>
+             </property>
+             <property name="invertedAppearance">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
          <item>
           <widget class="QLabel" name="labelCam1WidthLarge">

@@ -10,6 +10,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QDoubleSpinBox>
+#include <QSlider>
 #include <QtGlobal>
 #include <QFont>
 #include <QPoint>
@@ -27,6 +28,7 @@ xingaodaApp::xingaodaApp(QWidget *parent)
     ui->spinRealWidth->setValue(lastCalibrationWidthCm);
     ui->spinAutoThreshold->setValue(core.config()->config().autoStartThresholdMM / 10.0);
     updateFusionLabels(core.fusedWidthMM() / 10.0);
+    updateLineSliders();
 
     pushStatusLabel = new QLabel(tr("推送未开启"), this);
     statusBar()->addPermanentWidget(pushStatusLabel);
@@ -82,6 +84,8 @@ void xingaodaApp::setupConnections()
     connect(ui->spinRealWidth, &QDoubleSpinBox::editingFinished, this, &xingaodaApp::onCalibrateAll);
     connect(ui->btnApplyThreshold, &QPushButton::clicked, this, &xingaodaApp::onAutoThresholdEdited);
     connect(ui->spinAutoThreshold, &QDoubleSpinBox::editingFinished, this, &xingaodaApp::onAutoThresholdEdited);
+    connect(ui->sliderCam0Line, &QSlider::valueChanged, this, [this](int value) { onLineSliderChanged(0, value); });
+    connect(ui->sliderCam1Line, &QSlider::valueChanged, this, [this](int value) { onLineSliderChanged(1, value); });
 
     connect(&core, &ApplicationCore::cameraFrame, this, &xingaodaApp::onCameraFrame);
     connect(&core, &ApplicationCore::widthUpdated, this, &xingaodaApp::onWidthUpdated);
@@ -173,6 +177,7 @@ void xingaodaApp::reloadConfig()
     core.stopCameras();
     core.initialize();
     updateAutoPumpAction();
+    updateLineSliders();
     onMessage(tr("配置已重新加载"));
 }
 
@@ -264,6 +269,35 @@ void xingaodaApp::updateFusionLabels(double fusedCm)
     } else {
         ui->labelFusionValue->setText(tr("综合宽度 --"));
     }
+}
+
+void xingaodaApp::updateLineSliders()
+{
+    auto cfgManager = core.config();
+    if (!cfgManager) return;
+
+    auto setSliderValue = [cfgManager](QSlider *slider, int camId) {
+        if (!slider) return;
+        CameraConfig camCfg = cfgManager->camera(camId);
+        int sliderValue = qBound(0, static_cast<int>(camCfg.lineRatio * 100.0 + 0.5), 100);
+        slider->blockSignals(true);
+        slider->setValue(sliderValue);
+        slider->blockSignals(false);
+    };
+
+    setSliderValue(ui->sliderCam0Line, 0);
+    setSliderValue(ui->sliderCam1Line, 1);
+}
+
+void xingaodaApp::onLineSliderChanged(int id, int value)
+{
+    if (id < 0 || id > 1) return;
+    const int bounded = qBound(0, value, 100);
+    const double ratio = bounded / 100.0;
+    CameraConfig camCfg = core.config()->camera(id);
+    camCfg.lineRatio = ratio;
+    core.config()->setCameraConfig(id, camCfg);
+    onMessage(tr("摄像头%1检测线高度调整为%2%").arg(id).arg(static_cast<int>(ratio * 100)));
 }
 
 QImage xingaodaApp::drawOverlay(int id, const QImage &src)
