@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <numeric>
 #include <limits>
+#include <cmath>
 #include <opencv2/opencv.hpp>
 
 class WidthProcessingWorker : public QObject {
@@ -305,6 +306,64 @@ bool ApplicationCore::applyCameraSelection(int id, int index, bool enabled)
     }
     reloadCamerasFromConfig();
     return ok;
+}
+
+bool ApplicationCore::absoluteCalibrateAllCameras(double realWidthMm, QString &errorMessage)
+{
+    if (realWidthMm <= 0) {
+        errorMessage = tr("请输入有效的真实宽度");
+        return false;
+    }
+
+    double newMmPerPixel[2] {-1.0, -1.0};
+    bool anyActive = false;
+    const bool dualMode = cfg.config().dualCameraMode;
+
+    for (int i = 0; i < 2; ++i) {
+        const CameraConfig camCfg = cfg.camera(i);
+        const bool active = camCfg.enabled && (i == 0 || dualMode);
+        if (!active) {
+            continue;
+        }
+        anyActive = true;
+        if (!cameraReady[i]) {
+            errorMessage = tr("摄像头%1未就绪或断流，无法校准").arg(i);
+            return false;
+        }
+        const WidthResult &res = lastResult[i];
+        if (!res.valid) {
+            errorMessage = tr("摄像头%1未检测到有效宽度，请检查画面").arg(i);
+            return false;
+        }
+        if (res.widthPixels <= 1.0) {
+            errorMessage = tr("摄像头%1检测的像素宽度过小，无法校准").arg(i);
+            return false;
+        }
+        const double mmPerPixel = realWidthMm / res.widthPixels;
+        if (!std::isfinite(mmPerPixel) || mmPerPixel <= 0.0 || mmPerPixel > 10.0) {
+            errorMessage = tr("摄像头%1换算得到的比例无效").arg(i);
+            return false;
+        }
+        newMmPerPixel[i] = mmPerPixel;
+    }
+
+    if (!anyActive) {
+        errorMessage = tr("没有可用的摄像头可供校准");
+        return false;
+    }
+
+    for (int i = 0; i < 2; ++i) {
+        if (newMmPerPixel[i] > 0) {
+            calib.setCameraMmPerPixel(i, newMmPerPixel[i]);
+            if (lastResult[i].valid) {
+                lastResult[i].widthMM = lastResult[i].widthPixels * newMmPerPixel[i];
+                emit widthUpdated(i, lastResult[i]);
+            }
+        }
+    }
+
+    updateFusion(-1);
+    return true;
 }
 
 bool ApplicationCore::calibrateAllCameras(double realWidthMm, QString &errorMessage)

@@ -40,3 +40,12 @@ void CalibrationManager::setGlobalMmPerPixel(double value)
     mmPerPixelMap[1] = value;
 }
 
+void CalibrationManager::setCameraMmPerPixel(int cameraId, double value)
+{
+    if (cameraId < 0 || cameraId > 1 || value <= 0) return;
+    mmPerPixelMap[cameraId] = value;
+    if (configManager) {
+        configManager->updateMmPerPixel(cameraId, value);
+    }
+}
+
