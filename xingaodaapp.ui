@@ -72,13 +72,47 @@
              </property>
             </widget>
            </item>
-          </layout>
-         </item>
-         <item>
-          <widget class="QLabel" name="labelCam0WidthLarge">
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="layoutCam0Controls">
+          <item>
+           <widget class="QLabel" name="labelCam0Rotation">
+            <property name="text">
+             <string>旋转</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="comboCam0Rotation"/>
+          </item>
+          <item>
+           <widget class="QLabel" name="labelCam0Band">
+            <property name="text">
+             <string>检测带宽 (px)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSpinBox" name="spinCam0BandHeight">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>2000</number>
+            </property>
+            <property name="value">
+             <number>50</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QLabel" name="labelCam0WidthLarge">
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
            <property name="styleSheet">
             <string notr="true">font-size: 32px; font-weight: bold; color: #1b5e20;</string>
            </property>
@@ -145,12 +179,46 @@
              </property>
             </widget>
            </item>
-          </layout>
-         </item>
-         <item>
-          <widget class="QLabel" name="labelCam1WidthLarge">
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="layoutCam1Controls">
+          <item>
+           <widget class="QLabel" name="labelCam1Rotation">
+            <property name="text">
+             <string>旋转</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="comboCam1Rotation"/>
+          </item>
+          <item>
+           <widget class="QLabel" name="labelCam1Band">
+            <property name="text">
+             <string>检测带宽 (px)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSpinBox" name="spinCam1BandHeight">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>2000</number>
+            </property>
+            <property name="value">
+             <number>50</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QLabel" name="labelCam1WidthLarge">
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
            </property>
            <property name="styleSheet">
             <string notr="true">font-size: 32px; font-weight: bold; color: #0d47a1;</string>

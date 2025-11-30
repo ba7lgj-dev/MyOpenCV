@@ -44,6 +44,8 @@ private slots:
     void onPushFailureAlarm(int failures);
     void onAutoThresholdEdited();
     void onLineSliderChanged(int id, int value);
+    void onRotationChanged(int id, int index);
+    void onBandHeightChanged(int id, int value);
 
 private:
     void setupConnections();
@@ -51,7 +53,7 @@ private:
     void updateAutoPumpAction();
     QImage drawOverlay(int id, const QImage &src);
     void updateFusionLabels(double fusedCm);
-    void updateLineSliders();
+    void updateCameraControls();
 
     Ui::xingaodaApp *ui;
     ApplicationCore core;
