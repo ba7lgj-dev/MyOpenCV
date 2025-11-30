@@ -92,6 +92,7 @@ void UsbCameraWorker::run()
 {
     running = openCamera();
     if (!running) return;
+    emitTimer.invalidate();
     while (true) {
         {
             QMutexLocker locker(&mutex);
@@ -131,7 +132,10 @@ void UsbCameraWorker::run()
             }
         }
         emit rawFrameReady(frame);
-        emit frameReady(matToImage(frame));
+        if (!emitTimer.isValid() || emitTimer.elapsed() >= emitIntervalMs) {
+            emit frameReady(matToImage(frame));
+            emitTimer.restart();
+        }
         if (autoExposureEnabled()) {
             performAutoExposure(frame);
         }

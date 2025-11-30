@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QTimer>
+#include <QThread>
 #include <QList>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
@@ -17,6 +18,8 @@
 #include "autopumpcontroller.h"
 
 QT_CHARTS_USE_NAMESPACE
+
+class WidthProcessingWorker;
 
 class ApplicationCore : public QObject {
     Q_OBJECT
@@ -45,6 +48,7 @@ signals:
     void fusedWidthUpdated(double fusedMm, double cam0Mm, double cam1Mm);
     void message(const QString &msg);
     void safetyModeEnabled();
+    void processFrameRequest(int id, const cv::Mat &frame, const CameraConfig &cfg);
 
 public slots:
     void startCameras();
@@ -56,26 +60,28 @@ public slots:
 private slots:
     void onFrame0(const cv::Mat &frame);
     void onFrame1(const cv::Mat &frame);
-    void handleWidth(int id, const cv::Mat &frame);
+    void onWidthResult(int id, const WidthResult &result);
     void onPumpSafety(const QString &msg);
     void updateFusion(int latestId);
     double calculateFusion(const QList<double> &values) const;
     int chooseFusionCameraId() const;
 
 private:
+    void dispatchFrame(int id, const cv::Mat &frame);
     void processPumpLogic(int id, const WidthResult &result, const CameraConfig &cfg);
     void appendTrend(int id, double widthMM);
     void applyPumpSettings();
 
     ConfigManager cfg;
     CalibrationManager calib{&cfg};
-    IWidthEstimator *estimator {nullptr};
     UsbCamera cam0;
     UsbCamera cam1;
     Cp2102PumpController pump;
     PushManager *push {nullptr};
     AutoPumpController *autoPumpController {nullptr};
     QThread autoPumpThread;
+    QThread widthThread;
+    class WidthProcessingWorker *widthWorker {nullptr};
     bool autoPump {false};
     QChartView *chartView {nullptr};
     QLineSeries *series0 {nullptr};
