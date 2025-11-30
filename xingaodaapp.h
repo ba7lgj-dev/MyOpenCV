@@ -43,6 +43,7 @@ private slots:
     void onPushStatusChanged(int failures);
     void onPushFailureAlarm(int failures);
     void onAutoThresholdEdited();
+    void onLineSliderChanged(int id, int value);
 
 private:
     void setupConnections();
@@ -50,6 +51,7 @@ private:
     void updateAutoPumpAction();
     QImage drawOverlay(int id, const QImage &src);
     void updateFusionLabels(double fusedCm);
+    void updateLineSliders();
 
     Ui::xingaodaApp *ui;
     ApplicationCore core;
