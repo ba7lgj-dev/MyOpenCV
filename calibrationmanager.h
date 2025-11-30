@@ -10,6 +10,7 @@ public:
 
     void addCalibrationSample(int cameraId, double realMM, double widthPixels);
     double getMmPerPixel(int cameraId) const;
+    void setGlobalMmPerPixel(double value);
 
 private:
     ConfigManager *configManager {nullptr};

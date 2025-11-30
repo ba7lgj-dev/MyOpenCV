@@ -3,6 +3,7 @@
 #include <QMetaType>
 #include <QtGlobal>
 #include <algorithm>
+#include <numeric>
 #include <limits>
 #include <opencv2/opencv.hpp>
 
@@ -308,20 +309,59 @@ bool ApplicationCore::applyCameraSelection(int id, int index, bool enabled)
 
 bool ApplicationCore::calibrateAllCameras(double realWidthMm, QString &errorMessage)
 {
-    QList<int> calibrated;
+    if (realWidthMm <= 0) {
+        errorMessage = tr("请输入有效的真实宽度");
+        return false;
+    }
+
+    QList<double> measuredSamples;
+    if (fusedValid && fusedWidth > 0) {
+        measuredSamples.append(fusedWidth);
+    }
     for (int i = 0; i < 2; ++i) {
-        if (lastResult[i].valid && lastResult[i].widthPixels > 0.0) {
-            CameraConfig cfgCam = cfg.camera(i);
-            cfgCam.mmPerPixel = realWidthMm / lastResult[i].widthPixels;
-            cfg.setCameraConfig(i, cfgCam);
-            calibrated.append(i);
+        if (lastResult[i].valid && lastResult[i].widthMM > 0) {
+            measuredSamples.append(lastResult[i].widthMM);
         }
     }
-    if (calibrated.isEmpty()) {
+
+    if (measuredSamples.isEmpty()) {
         errorMessage = tr("摄像头未就绪，无法校准宽度");
         return false;
     }
-    reloadCamerasFromConfig();
+
+    const double measuredMm = std::accumulate(measuredSamples.begin(), measuredSamples.end(), 0.0) / measuredSamples.size();
+    if (measuredMm <= 0) {
+        errorMessage = tr("当前宽度无效，无法校准");
+        return false;
+    }
+
+    const double ratio = realWidthMm / measuredMm;
+    double baseMmPerPixel = cfg.camera(0).mmPerPixel;
+    if (baseMmPerPixel <= 0) {
+        baseMmPerPixel = cfg.camera(1).mmPerPixel;
+    }
+    if (baseMmPerPixel <= 0) {
+        baseMmPerPixel = 0.5;
+    }
+    double newMmPerPixel = baseMmPerPixel * ratio;
+    newMmPerPixel = qBound(0.0001, newMmPerPixel, 10.0);
+
+    cfg.updateMmPerPixel(0, newMmPerPixel);
+    cfg.updateMmPerPixel(1, newMmPerPixel);
+    calib.setGlobalMmPerPixel(newMmPerPixel);
+
+    for (int i = 0; i < 2; ++i) {
+        if (lastResult[i].valid) {
+            lastResult[i].widthMM *= ratio;
+        }
+    }
+    if (fusedValid) {
+        fusedWidth *= ratio;
+    }
+
+    emit fusedWidthUpdated(fusedValid ? fusedWidth : 0.0,
+                          lastResult[0].valid ? lastResult[0].widthMM : 0.0,
+                          lastResult[1].valid ? lastResult[1].widthMM : 0.0);
     return true;
 }
 
