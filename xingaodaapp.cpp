@@ -11,6 +11,8 @@
 #include <QPushButton>
 #include <QDoubleSpinBox>
 #include <QSlider>
+#include <QComboBox>
+#include <QSpinBox>
 #include <QtGlobal>
 #include <QFont>
 #include <QPoint>
@@ -28,7 +30,7 @@ xingaodaApp::xingaodaApp(QWidget *parent)
     ui->spinRealWidth->setValue(lastCalibrationWidthCm);
     ui->spinAutoThreshold->setValue(core.config()->config().autoStartThresholdMM / 10.0);
     updateFusionLabels(core.fusedWidthMM() / 10.0);
-    updateLineSliders();
+    updateCameraControls();
 
     pushStatusLabel = new QLabel(tr("推送未开启"), this);
     statusBar()->addPermanentWidget(pushStatusLabel);
@@ -86,6 +88,10 @@ void xingaodaApp::setupConnections()
     connect(ui->spinAutoThreshold, &QDoubleSpinBox::editingFinished, this, &xingaodaApp::onAutoThresholdEdited);
     connect(ui->sliderCam0Line, &QSlider::valueChanged, this, [this](int value) { onLineSliderChanged(0, value); });
     connect(ui->sliderCam1Line, &QSlider::valueChanged, this, [this](int value) { onLineSliderChanged(1, value); });
+    connect(ui->comboCam0Rotation, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) { onRotationChanged(0, idx); });
+    connect(ui->comboCam1Rotation, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) { onRotationChanged(1, idx); });
+    connect(ui->spinCam0BandHeight, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value) { onBandHeightChanged(0, value); });
+    connect(ui->spinCam1BandHeight, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value) { onBandHeightChanged(1, value); });
 
     connect(&core, &ApplicationCore::cameraFrame, this, &xingaodaApp::onCameraFrame);
     connect(&core, &ApplicationCore::widthUpdated, this, &xingaodaApp::onWidthUpdated);
@@ -177,7 +183,7 @@ void xingaodaApp::reloadConfig()
     core.stopCameras();
     core.initialize();
     updateAutoPumpAction();
-    updateLineSliders();
+    updateCameraControls();
     onMessage(tr("配置已重新加载"));
 }
 
@@ -271,22 +277,48 @@ void xingaodaApp::updateFusionLabels(double fusedCm)
     }
 }
 
-void xingaodaApp::updateLineSliders()
+void xingaodaApp::updateCameraControls()
 {
     auto cfgManager = core.config();
     if (!cfgManager) return;
 
-    auto setSliderValue = [cfgManager](QSlider *slider, int camId) {
-        if (!slider) return;
-        CameraConfig camCfg = cfgManager->camera(camId);
-        int sliderValue = qBound(0, static_cast<int>(camCfg.lineRatio * 100.0 + 0.5), 100);
-        slider->blockSignals(true);
-        slider->setValue(sliderValue);
-        slider->blockSignals(false);
+    auto ensureComboAngles = [](QComboBox *combo) {
+        if (!combo) return;
+        if (combo->count() == 0) {
+            for (int deg : {0, 90, 180, 270}) {
+                combo->addItem(QString::number(deg), deg);
+            }
+        }
     };
 
-    setSliderValue(ui->sliderCam0Line, 0);
-    setSliderValue(ui->sliderCam1Line, 1);
+    auto setControls = [&](int camId, QSlider *slider, QComboBox *combo, QSpinBox *spin) {
+        CameraConfig camCfg = cfgManager->camera(camId);
+        int sliderValue = qBound(0, static_cast<int>(camCfg.lineRatio * 100.0 + 0.5), 100);
+        if (slider) {
+            slider->blockSignals(true);
+            slider->setValue(sliderValue);
+            slider->blockSignals(false);
+        }
+
+        ensureComboAngles(combo);
+        if (combo) {
+            int idx = combo->findData(camCfg.rotation);
+            if (idx < 0) idx = 0;
+            combo->blockSignals(true);
+            combo->setCurrentIndex(idx);
+            combo->blockSignals(false);
+        }
+
+        if (spin) {
+            int bandHeight = camCfg.widthRegionHeight > 0 ? camCfg.widthRegionHeight : 50;
+            spin->blockSignals(true);
+            spin->setValue(bandHeight);
+            spin->blockSignals(false);
+        }
+    };
+
+    setControls(0, ui->sliderCam0Line, ui->comboCam0Rotation, ui->spinCam0BandHeight);
+    setControls(1, ui->sliderCam1Line, ui->comboCam1Rotation, ui->spinCam1BandHeight);
 }
 
 void xingaodaApp::onLineSliderChanged(int id, int value)
@@ -298,6 +330,28 @@ void xingaodaApp::onLineSliderChanged(int id, int value)
     camCfg.lineRatio = ratio;
     core.config()->setCameraConfig(id, camCfg);
     onMessage(tr("摄像头%1检测线高度调整为%2%").arg(id).arg(static_cast<int>(ratio * 100)));
+}
+
+void xingaodaApp::onRotationChanged(int id, int index)
+{
+    if (id < 0 || id > 1) return;
+    QComboBox *combo = id == 0 ? ui->comboCam0Rotation : ui->comboCam1Rotation;
+    if (!combo) return;
+    int angle = combo->itemData(index).toInt();
+    CameraConfig camCfg = core.config()->camera(id);
+    camCfg.rotation = angle;
+    core.config()->setCameraConfig(id, camCfg);
+    onMessage(tr("摄像头%1旋转角度设置为%2°").arg(id).arg(angle));
+}
+
+void xingaodaApp::onBandHeightChanged(int id, int value)
+{
+    if (id < 0 || id > 1) return;
+    const int bandHeight = qMax(1, value);
+    CameraConfig camCfg = core.config()->camera(id);
+    camCfg.widthRegionHeight = bandHeight;
+    core.config()->setCameraConfig(id, camCfg);
+    onMessage(tr("摄像头%1检测带宽调整为%2 px").arg(id).arg(bandHeight));
 }
 
 QImage xingaodaApp::drawOverlay(int id, const QImage &src)
@@ -331,7 +385,7 @@ QImage xingaodaApp::drawOverlay(int id, const QImage &src)
     QString pixelText = lastWidth[id].valid ? tr("像素宽度: %1 px").arg(lastWidth[id].widthPixels, 0, 'f', 1) : tr("像素宽度: --");
     const double widthCm = lastWidth[id].valid ? lastWidth[id].widthMM / 10.0 : 0.0;
     QString realText = lastWidth[id].valid ? tr("真实宽度: %1 cm").arg(widthCm, 0, 'f', 2) : tr("真实宽度: --");
-    QString bandText = tr("检测线高度: %1 px").arg(band);
+    QString bandText = tr("检测带宽: %1 px").arg(band);
 
     int infoWidth = qMax(qMax(fm.horizontalAdvance(pixelText), fm.horizontalAdvance(bandText)), fmBig.horizontalAdvance(realText)) + 16;
     int infoHeight = fm.height() * 2 + fmBig.height() + 20;
