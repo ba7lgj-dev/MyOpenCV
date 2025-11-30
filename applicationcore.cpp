@@ -1,14 +1,52 @@
 #include "applicationcore.h"
 #include <QDateTime>
+#include <QMetaType>
 #include <QtGlobal>
 #include <algorithm>
 #include <limits>
 #include <opencv2/opencv.hpp>
 
+class WidthProcessingWorker : public QObject {
+    Q_OBJECT
+public:
+    explicit WidthProcessingWorker(QObject *parent = nullptr)
+        : QObject(parent)
+        , estimator(new MultiLineCannyWidthEstimator())
+    {}
+
+    ~WidthProcessingWorker() override { delete estimator; }
+
+public slots:
+    void processFrame(int id, const cv::Mat &frame, const CameraConfig &cfg)
+    {
+        if (!estimator || frame.empty()) return;
+        WidthResult r = estimator->estimate(frame, cfg);
+        if (r.valid) {
+            r.widthMM = r.widthPixels * cfg.mmPerPixel;
+        }
+        emit widthReady(id, r);
+    }
+
+signals:
+    void widthReady(int id, const WidthResult &result);
+
+private:
+    IWidthEstimator *estimator {nullptr};
+};
+
 ApplicationCore::ApplicationCore(QObject *parent)
     : QObject(parent)
 {
-    estimator = new MultiLineCannyWidthEstimator();
+    qRegisterMetaType<CameraConfig>("CameraConfig");
+    qRegisterMetaType<WidthResult>("WidthResult");
+    qRegisterMetaType<cv::Mat>("cv::Mat");
+
+    widthWorker = new WidthProcessingWorker();
+    widthWorker->moveToThread(&widthThread);
+    connect(&widthThread, &QThread::finished, widthWorker, &QObject::deleteLater);
+    connect(this, &ApplicationCore::processFrameRequest, widthWorker, &WidthProcessingWorker::processFrame, Qt::QueuedConnection);
+    connect(widthWorker, &WidthProcessingWorker::widthReady, this, &ApplicationCore::onWidthResult, Qt::QueuedConnection);
+    widthThread.start();
     series0 = new QLineSeries();
     series1 = new QLineSeries();
     chartView = new QChartView();
@@ -49,10 +87,11 @@ ApplicationCore::ApplicationCore(QObject *parent)
 
 ApplicationCore::~ApplicationCore()
 {
-    delete estimator;
     delete chartView;
     autoPumpThread.quit();
     autoPumpThread.wait();
+    widthThread.quit();
+    widthThread.wait();
 }
 
 void ApplicationCore::initialize()
@@ -115,7 +154,9 @@ void ApplicationCore::startCameras()
         cam0.start();
     }
     if (cfg.config().dualCameraMode && cfg.camera(1).enabled && cfg.camera(1).index >= 0) {
-        cam1.start();
+        QTimer::singleShot(350, this, [this]() {
+            cam1.start();
+        });
     }
     if (!cfg.config().pumpPort.isEmpty()) {
         const QString port = cfg.config().pumpPort;
@@ -154,26 +195,29 @@ void ApplicationCore::setAutoPumpEnabled(bool enabled)
 
 void ApplicationCore::onFrame0(const cv::Mat &frame)
 {
-    handleWidth(0, frame);
+    dispatchFrame(0, frame);
 }
 
 void ApplicationCore::onFrame1(const cv::Mat &frame)
 {
-    handleWidth(1, frame);
+    dispatchFrame(1, frame);
 }
 
-void ApplicationCore::handleWidth(int id, const cv::Mat &frame)
+void ApplicationCore::dispatchFrame(int id, const cv::Mat &frame)
 {
-    CameraConfig cfgCam = cfg.camera(id);
-    WidthResult r = estimator->estimate(frame, cfgCam);
-    if (!r.valid) return;
-    r.widthMM = r.widthPixels * cfgCam.mmPerPixel;
-    lastResult[id] = r;
-    calib.addCalibrationSample(id, r.widthMM, r.widthPixels); // keep smoothing
-    appendTrend(id, r.widthMM);
-    emit widthUpdated(id, r);
+    if (!running || !widthWorker) return;
+    emit processFrameRequest(id, frame, cfg.camera(id));
+}
+
+void ApplicationCore::onWidthResult(int id, const WidthResult &result)
+{
+    if (!result.valid) return;
+    lastResult[id] = result;
+    calib.addCalibrationSample(id, result.widthMM, result.widthPixels); // keep smoothing
+    appendTrend(id, result.widthMM);
+    emit widthUpdated(id, result);
     updateFusion(id);
-    LogManager::instance().logInfo(QString("Camera%1 width=%2px, %3mm").arg(id).arg(r.widthPixels).arg(r.widthMM));
+    LogManager::instance().logInfo(QString("Camera%1 width=%2px, %3mm").arg(id).arg(result.widthPixels).arg(result.widthMM));
 }
 
 QList<int> ApplicationCore::availableCameraIndices(int maxIndex) const
@@ -400,4 +444,6 @@ void ApplicationCore::applyPumpSettings()
 {
     pump.setSafetyLimits(cfg.config().safetyMaxEvents, cfg.config().safetyWindowMs);
 }
+
+#include "applicationcore.moc"
 

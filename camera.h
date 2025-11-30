@@ -6,6 +6,7 @@
 #include <QThread>
 #include <QMutex>
 #include <QWaitCondition>
+#include <QElapsedTimer>
 #include <opencv2/opencv.hpp>
 
 class CameraConfig;
@@ -58,6 +59,8 @@ private:
     int failCount {0};
     CameraConfig *config {nullptr};
     QMutex mutex;
+    QElapsedTimer emitTimer;
+    int emitIntervalMs {100};
 };
 
 class UsbCamera : public ICamera {
