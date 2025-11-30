@@ -28,7 +28,6 @@ private:
         Standby,
         Prejudge,
         Pumping,
-        Monitoring,
         Cooling,
         Error
     };
@@ -54,12 +53,13 @@ private:
     bool frameStable {true};
 
     double startThreshold {1000.0};
-    double stopThreshold {1200.0};
     int precheckMs {5000};
     int pulseMs {600};
-    int monitorMs {3000};
     int cooldownMs {2000};
+    int noChangeTimeoutMs {10000};
     double minInflation {5.0};
+    bool inflationObserved {false};
+    bool anomalyRaised {false};
 };
 
 #endif // AUTOPUMPCONTROLLER_H

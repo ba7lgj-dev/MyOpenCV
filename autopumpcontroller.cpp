@@ -13,11 +13,10 @@ AutoPumpController::AutoPumpController(IPumpController *pump, PushManager *pushM
 void AutoPumpController::updateSettings(const AppConfig &cfgValue)
 {
     startThreshold = qBound(10.0, cfgValue.autoStartThresholdMM, 10000.0);
-    stopThreshold = qBound(startThreshold + 1.0, cfgValue.autoStopThresholdMM, 15000.0);
     precheckMs = qBound(1000, cfgValue.autoPrecheckMs, 60000);
     pulseMs = qBound(50, cfgValue.pumpDurationMs, 20000);
-    monitorMs = qBound(1000, cfgValue.autoMonitorMs, 10000);
     cooldownMs = qBound(0, cfgValue.autoCooldownMs, 600000);
+    noChangeTimeoutMs = qBound(1000, cfgValue.autoNoChangeTimeoutMs, 60000);
     minInflation = qBound(0.0, cfgValue.autoMinInflationMM, 5000.0);
     enabled = cfgValue.autoPumpEnabled;
 }
@@ -37,6 +36,8 @@ void AutoPumpController::forceReset()
     pumpStartWidth = 0.0;
     pumpCameraId = 0;
     phaseStart = timer.elapsed();
+    inflationObserved = false;
+    anomalyRaised = false;
 }
 
 void AutoPumpController::handleWidthSample(int cameraId, double widthMm, bool frameOk)
@@ -49,7 +50,7 @@ void AutoPumpController::handleWidthSample(int cameraId, double widthMm, bool fr
         return;
     }
 
-    if (state == State::Cooling || state == State::Error) {
+    if (state == State::Error) {
         if (now - phaseStart >= cooldownMs) {
             changeState(State::Standby, tr("cooldown finished"));
         }
@@ -84,18 +85,18 @@ void AutoPumpController::handleWidthSample(int cameraId, double widthMm, bool fr
         break;
     case State::Pumping:
         break;
-    case State::Monitoring: {
-        if (widthMm >= stopThreshold) {
-            finishSuccess(widthMm);
+    case State::Cooling: {
+        const double delta = widthMm - pumpStartWidth;
+        if (!inflationObserved && delta >= minInflation) {
+            inflationObserved = true;
+        }
+        if (!inflationObserved && !anomalyRaised && (now - lastPumpTime >= noChangeTimeoutMs)) {
+            anomalyRaised = true;
+            handleAnomaly(QStringLiteral("no_width_change"), tr("no width change observed after pump"));
             break;
         }
-        const double delta = widthMm - pumpStartWidth;
-        if (now - phaseStart >= monitorMs) {
-            if (delta < minInflation) {
-                handleAnomaly(QStringLiteral("insufficient_inflation"), tr("insufficient inflation observed"));
-            } else {
-                finishSuccess(widthMm);
-            }
+        if (now - phaseStart >= cooldownMs) {
+            changeState(State::Standby, tr("cooldown finished"));
         }
         break;
     }
@@ -116,6 +117,8 @@ void AutoPumpController::startPump(int cameraId, double currentWidth)
 {
     pumpCameraId = cameraId;
     pumpStartWidth = currentWidth;
+    inflationObserved = false;
+    anomalyRaised = false;
     changeState(State::Pumping, tr("start pump"));
 
     if (!pump->pulseLow(pulseMs)) {
@@ -126,15 +129,14 @@ void AutoPumpController::startPump(int cameraId, double currentWidth)
     if (push) {
         push->sendPumpTriggered(cameraId, currentWidth);
     }
-    changeState(State::Monitoring, tr("pump pulse finished"));
+    changeState(State::Cooling, tr("pump pulse finished"));
     phaseStart = timer.elapsed();
 }
 
 void AutoPumpController::finishSuccess(double width)
 {
-    const QString msg = tr("Auto pump success: width=%1cm stopThreshold=%2cm")
-                            .arg(width / 10.0, 0, 'f', 2)
-                            .arg(stopThreshold / 10.0, 0, 'f', 2);
+    const QString msg = tr("Auto pump success: width=%1cm")
+                            .arg(width / 10.0, 0, 'f', 2);
     LogManager::instance().logInfo(msg);
     emit statusMessage(msg);
     changeState(State::Cooling, tr("enter cooldown"));
@@ -169,16 +171,15 @@ void AutoPumpController::changeState(AutoPumpController::State next, const QStri
 
 void AutoPumpController::logTransition(const QString &action, double width, int cameraId) const
 {
-    const QString msg = tr("[AutoPump] state=%1 action=%2 cam=%3 width=%4 start=%5 stop=%6 pulse=%7 monitor=%8 cooldown=%9")
+    const QString msg = tr("[AutoPump] state=%1 action=%2 cam=%3 width=%4 start=%5 pulse=%6 cooldown=%7 timeout=%8")
                             .arg(static_cast<int>(state))
                             .arg(action)
                             .arg(cameraId)
                             .arg(width)
                             .arg(startThreshold)
-                            .arg(stopThreshold)
                             .arg(pulseMs)
-                            .arg(monitorMs)
-                            .arg(cooldownMs);
+                            .arg(cooldownMs)
+                            .arg(noChangeTimeoutMs);
     LogManager::instance().logInfo(msg);
 }
 
