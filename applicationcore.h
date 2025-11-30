@@ -39,6 +39,7 @@ public:
     bool testPumpPulse(const QString &portName, int pulseMs);
     bool applyCameraSelection(int id, int index, bool enabled);
     bool calibrateAllCameras(double realWidthMm, QString &errorMessage);
+    bool absoluteCalibrateAllCameras(double realWidthMm, QString &errorMessage);
     double fusedWidthMM() const { return fusedWidth; }
     WidthResult lastWidthResult(int id) const { return lastResult[id]; }
 

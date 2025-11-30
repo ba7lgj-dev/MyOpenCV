@@ -6,6 +6,7 @@
 #include <QComboBox>
 #include <QLineEdit>
 #include <QCheckBox>
+#include <QDoubleSpinBox>
 #include "configmanager.h"
 
 class ApplicationCore;
@@ -20,6 +21,7 @@ private slots:
     void onRescan();
     void onSwap();
     void onAccept();
+    void onAbsoluteCalibrate();
 
 private:
     void loadFromConfig();
@@ -36,6 +38,7 @@ private:
     QComboBox *comboRotation0 {nullptr};
     QComboBox *comboRotation1 {nullptr};
     QCheckBox *chkDualMode {nullptr};
-};
+    QDoubleSpinBox *spinAbsoluteWidth {nullptr};
+}; 
 
 #endif // CAMERAMANAGERDIALOG_H

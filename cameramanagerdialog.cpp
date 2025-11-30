@@ -6,6 +6,7 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QMessageBox>
 
 CameraManagerDialog::CameraManagerDialog(ApplicationCore *core, QWidget *parent)
     : QDialog(parent), core(core)
@@ -25,6 +26,12 @@ CameraManagerDialog::CameraManagerDialog(ApplicationCore *core, QWidget *parent)
     comboRotation0 = new QComboBox(this);
     comboRotation1 = new QComboBox(this);
     chkDualMode = new QCheckBox(tr("启用双摄像头模式"), this);
+    spinAbsoluteWidth = new QDoubleSpinBox(this);
+    spinAbsoluteWidth->setDecimals(2);
+    spinAbsoluteWidth->setSingleStep(0.1);
+    spinAbsoluteWidth->setMinimum(0.01);
+    spinAbsoluteWidth->setMaximum(1000.0);
+    spinAbsoluteWidth->setValue(80.0);
 
     for (int deg : {0, 90, 180, 270}) {
         comboRotation0->addItem(QString::number(deg), deg);
@@ -46,9 +53,18 @@ CameraManagerDialog::CameraManagerDialog(ApplicationCore *core, QWidget *parent)
     hlayout->addWidget(btnSwap);
     hlayout->addStretch();
 
+    auto absoluteLayout = new QHBoxLayout();
+    auto lblAbsolute = new QLabel(tr("绝对宽度校准 (cm)"), this);
+    auto btnAbsolute = new QPushButton(tr("绝对校准"), this);
+    absoluteLayout->addWidget(lblAbsolute);
+    absoluteLayout->addWidget(spinAbsoluteWidth);
+    absoluteLayout->addWidget(btnAbsolute);
+    absoluteLayout->addStretch();
+
     layout->addLayout(form0);
     layout->addLayout(form1);
     layout->addWidget(chkDualMode);
+    layout->addLayout(absoluteLayout);
     layout->addLayout(hlayout);
 
     auto buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
@@ -56,6 +72,7 @@ CameraManagerDialog::CameraManagerDialog(ApplicationCore *core, QWidget *parent)
 
     connect(btnRescan, &QPushButton::clicked, this, &CameraManagerDialog::onRescan);
     connect(btnSwap, &QPushButton::clicked, this, &CameraManagerDialog::onSwap);
+    connect(btnAbsolute, &QPushButton::clicked, this, &CameraManagerDialog::onAbsoluteCalibrate);
     connect(buttons, &QDialogButtonBox::accepted, this, &CameraManagerDialog::onAccept);
     connect(buttons, &QDialogButtonBox::rejected, this, &CameraManagerDialog::reject);
 
@@ -136,5 +153,17 @@ void CameraManagerDialog::onAccept()
     cfg->save(cfg->configPath());
     core->reloadCamerasFromConfig();
     accept();
+}
+
+void CameraManagerDialog::onAbsoluteCalibrate()
+{
+    if (!core) return;
+    QString error;
+    const double realWidthMm = spinAbsoluteWidth->value() * 10.0;
+    if (!core->absoluteCalibrateAllCameras(realWidthMm, error)) {
+        QMessageBox::warning(this, tr("校准失败"), error);
+    } else {
+        QMessageBox::information(this, tr("校准成功"), tr("所有摄像头已完成绝对宽度校准"));
+    }
 }
 
