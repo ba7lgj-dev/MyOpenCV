@@ -42,6 +42,7 @@ private slots:
     void onSafety();
     void onPushStatusChanged(int failures);
     void onPushFailureAlarm(int failures);
+    void onAutoThresholdEdited();
 
 private:
     void setupConnections();

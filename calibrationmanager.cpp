@@ -34,3 +34,9 @@ double CalibrationManager::getMmPerPixel(int cameraId) const
     return 0.0;
 }
 
+void CalibrationManager::setGlobalMmPerPixel(double value)
+{
+    mmPerPixelMap[0] = value;
+    mmPerPixelMap[1] = value;
+}
+

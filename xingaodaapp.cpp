@@ -7,9 +7,9 @@
 #include <QPen>
 #include <QMenuBar>
 #include <QMenu>
-#include <QInputDialog>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QDoubleSpinBox>
 #include <QtGlobal>
 #include <QFont>
 #include <QPoint>
@@ -24,6 +24,8 @@ xingaodaApp::xingaodaApp(QWidget *parent)
     createMenus();
     setupConnections();
     core.initialize();
+    ui->spinRealWidth->setValue(lastCalibrationWidthCm);
+    ui->spinAutoThreshold->setValue(core.config()->config().autoStartThresholdMM / 10.0);
     updateFusionLabels(core.fusedWidthMM() / 10.0);
 
     pushStatusLabel = new QLabel(tr("推送未开启"), this);
@@ -77,6 +79,9 @@ void xingaodaApp::createMenus()
 void xingaodaApp::setupConnections()
 {
     connect(ui->btnCalibrateAll, &QPushButton::clicked, this, &xingaodaApp::onCalibrateAll);
+    connect(ui->spinRealWidth, &QDoubleSpinBox::editingFinished, this, &xingaodaApp::onCalibrateAll);
+    connect(ui->btnApplyThreshold, &QPushButton::clicked, this, &xingaodaApp::onAutoThresholdEdited);
+    connect(ui->spinAutoThreshold, &QDoubleSpinBox::editingFinished, this, &xingaodaApp::onAutoThresholdEdited);
 
     connect(&core, &ApplicationCore::cameraFrame, this, &xingaodaApp::onCameraFrame);
     connect(&core, &ApplicationCore::widthUpdated, this, &xingaodaApp::onWidthUpdated);
@@ -101,10 +106,7 @@ void xingaodaApp::onStop()
 
 void xingaodaApp::onCalibrateAll()
 {
-    bool ok = false;
-    const double realWidth = QInputDialog::getDouble(this, tr("宽度校准"), tr("请输入当前物料真实宽度 (cm)"),
-                                                    lastCalibrationWidthCm, 0.1, 1000.0, 2, &ok);
-    if (!ok) return;
+    const double realWidth = ui->spinRealWidth->value();
     lastCalibrationWidthCm = realWidth;
     QString error;
     const double realWidthMm = realWidth * 10.0;
@@ -114,6 +116,14 @@ void xingaodaApp::onCalibrateAll()
     } else {
         onMessage(tr("宽度校准完成"));
     }
+}
+
+void xingaodaApp::onAutoThresholdEdited()
+{
+    const double thresholdCm = ui->spinAutoThreshold->value();
+    core.config()->setAutoStartThresholdMM(thresholdCm * 10.0);
+    core.reloadPumpConfig();
+    onMessage(tr("自动加气阈值已更新为 %1 cm").arg(thresholdCm, 0, 'f', 2));
 }
 
 void xingaodaApp::openCameraManager()

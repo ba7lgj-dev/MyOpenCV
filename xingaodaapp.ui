@@ -133,14 +133,88 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="btnCalibrateAll">
-        <property name="minimumHeight">
-         <number>48</number>
-        </property>
-        <property name="text">
-         <string>宽度校准</string>
-        </property>
-       </widget>
+       <layout class="QVBoxLayout" name="layoutControls">
+        <item>
+         <layout class="QHBoxLayout" name="layoutRealWidth">
+          <item>
+           <widget class="QLabel" name="labelRealWidth">
+            <property name="text">
+             <string>真实宽度 (cm)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="spinRealWidth">
+            <property name="minimum">
+             <double>0.010000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>1000.000000000000000</double>
+            </property>
+            <property name="decimals">
+             <number>2</number>
+            </property>
+            <property name="singleStep">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="value">
+             <double>80.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnCalibrateAll">
+            <property name="minimumHeight">
+             <number>48</number>
+            </property>
+            <property name="text">
+             <string>宽度校准</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="layoutThreshold">
+          <item>
+           <widget class="QLabel" name="labelAutoThreshold">
+            <property name="text">
+             <string>自动加气阈值 (cm)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="spinAutoThreshold">
+            <property name="minimum">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>1000.000000000000000</double>
+            </property>
+            <property name="decimals">
+             <number>2</number>
+            </property>
+            <property name="singleStep">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="value">
+             <double>100.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnApplyThreshold">
+            <property name="minimumHeight">
+             <number>48</number>
+            </property>
+            <property name="text">
+             <string>更新阈值</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
       </item>
       <item>
        <spacer name="fusionRightSpacer">
