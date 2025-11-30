@@ -50,10 +50,9 @@ struct AppConfig {
     QString pumpPort;
     int pumpDurationMs {600};
     double autoStartThresholdMM {1000};
-    double autoStopThresholdMM {1200};
     int autoPrecheckMs {5000};
-    int autoMonitorMs {3000};
     int autoCooldownMs {2000};
+    int autoNoChangeTimeoutMs {10000};
     double autoMinInflationMM {5.0};
     bool autoPumpEnabled {false};
     int safetyMaxEvents {20};
@@ -76,10 +75,9 @@ public:
     void setPumpPort(const QString &port);
     void setPumpDurationMs(int ms);
     void setAutoStartThresholdMM(double mm);
-    void setAutoStopThresholdMM(double mm);
     void setAutoPrecheckMs(int ms);
-    void setAutoMonitorMs(int ms);
     void setAutoCooldownMs(int ms);
+    void setAutoNoChangeTimeoutMs(int ms);
     void setMinInflationMM(double mm);
     void setDualCameraMode(bool enabled);
     void setFusionStrategy(const QString &strategy);

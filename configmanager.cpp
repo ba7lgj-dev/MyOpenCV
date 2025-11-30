@@ -99,22 +99,6 @@ void ConfigManager::setAutoStartThresholdMM(double mm)
     {
         QMutexLocker locker(&mutex);
         appConfig.autoStartThresholdMM = qBound(10.0, mm, 10000.0);
-        if (appConfig.autoStopThresholdMM <= appConfig.autoStartThresholdMM) {
-            appConfig.autoStopThresholdMM = appConfig.autoStartThresholdMM + 1.0;
-        }
-        savedPath = lastPath;
-    }
-    if (!savedPath.isEmpty()) {
-        save(savedPath);
-    }
-}
-
-void ConfigManager::setAutoStopThresholdMM(double mm)
-{
-    QString savedPath;
-    {
-        QMutexLocker locker(&mutex);
-        appConfig.autoStopThresholdMM = qBound(appConfig.autoStartThresholdMM + 1.0, mm, 15000.0);
         savedPath = lastPath;
     }
     if (!savedPath.isEmpty()) {
@@ -135,12 +119,12 @@ void ConfigManager::setAutoPrecheckMs(int ms)
     }
 }
 
-void ConfigManager::setAutoMonitorMs(int ms)
+void ConfigManager::setAutoCooldownMs(int ms)
 {
     QString savedPath;
     {
         QMutexLocker locker(&mutex);
-        appConfig.autoMonitorMs = qBound(1000, ms, 10000);
+        appConfig.autoCooldownMs = qBound(0, ms, 600000);
         savedPath = lastPath;
     }
     if (!savedPath.isEmpty()) {
@@ -148,12 +132,12 @@ void ConfigManager::setAutoMonitorMs(int ms)
     }
 }
 
-void ConfigManager::setAutoCooldownMs(int ms)
+void ConfigManager::setAutoNoChangeTimeoutMs(int ms)
 {
     QString savedPath;
     {
         QMutexLocker locker(&mutex);
-        appConfig.autoCooldownMs = qBound(0, ms, 600000);
+        appConfig.autoNoChangeTimeoutMs = qBound(1000, ms, 60000);
         savedPath = lastPath;
     }
     if (!savedPath.isEmpty()) {
@@ -260,10 +244,9 @@ void ConfigManager::fromJson(const QJsonObject &obj)
     appConfig.pumpDurationMs = obj.value("pumpDurationMs").toInt(appConfig.pumpDurationMs);
     appConfig.autoStartThresholdMM = obj.value("pumpThresholdMM").toDouble(appConfig.autoStartThresholdMM);
     appConfig.autoStartThresholdMM = obj.value("autoStartThresholdMM").toDouble(appConfig.autoStartThresholdMM);
-    appConfig.autoStopThresholdMM = obj.value("autoStopThresholdMM").toDouble(appConfig.autoStopThresholdMM);
     appConfig.autoPrecheckMs = obj.value("autoPrecheckMs").toInt(appConfig.autoPrecheckMs);
-    appConfig.autoMonitorMs = obj.value("autoMonitorMs").toInt(appConfig.autoMonitorMs);
     appConfig.autoCooldownMs = obj.value("autoCooldownMs").toInt(appConfig.autoCooldownMs);
+    appConfig.autoNoChangeTimeoutMs = obj.value("autoNoChangeTimeoutMs").toInt(appConfig.autoNoChangeTimeoutMs);
     appConfig.autoMinInflationMM = obj.value("autoMinInflationMM").toDouble(appConfig.autoMinInflationMM);
     appConfig.autoPumpEnabled = obj.value("autoPumpEnabled").toBool(appConfig.autoPumpEnabled);
     appConfig.safetyMaxEvents = obj.value("safetyMaxEvents").toInt(appConfig.safetyMaxEvents);
@@ -323,10 +306,9 @@ QJsonObject ConfigManager::toJson() const
     obj.insert("pumpPort", appConfig.pumpPort);
     obj.insert("pumpDurationMs", appConfig.pumpDurationMs);
     obj.insert("autoStartThresholdMM", appConfig.autoStartThresholdMM);
-    obj.insert("autoStopThresholdMM", appConfig.autoStopThresholdMM);
     obj.insert("autoPrecheckMs", appConfig.autoPrecheckMs);
-    obj.insert("autoMonitorMs", appConfig.autoMonitorMs);
     obj.insert("autoCooldownMs", appConfig.autoCooldownMs);
+    obj.insert("autoNoChangeTimeoutMs", appConfig.autoNoChangeTimeoutMs);
     obj.insert("autoMinInflationMM", appConfig.autoMinInflationMM);
     obj.insert("autoPumpEnabled", appConfig.autoPumpEnabled);
     obj.insert("safetyMaxEvents", appConfig.safetyMaxEvents);

@@ -31,10 +31,9 @@ private:
     QComboBox *comboPort {nullptr};
     QDoubleSpinBox *spinDuration {nullptr};
     QDoubleSpinBox *spinPrecheck {nullptr};
-    QDoubleSpinBox *spinMonitor {nullptr};
     QDoubleSpinBox *spinCooldown {nullptr};
     QDoubleSpinBox *spinStartThreshold {nullptr};
-    QDoubleSpinBox *spinStopThreshold {nullptr};
+    QDoubleSpinBox *spinNoChangeTimeout {nullptr};
     QDoubleSpinBox *spinMinInflation {nullptr};
     QLabel *labelStatus {nullptr};
 };
