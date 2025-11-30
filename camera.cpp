@@ -131,7 +131,10 @@ void UsbCameraWorker::run()
                 cv::rotate(frame, frame, cv::ROTATE_90_COUNTERCLOCKWISE);
             }
         }
-        emit rawFrameReady(frame);
+        if (!rawEmitTimer.isValid() || rawEmitTimer.elapsed() >= rawEmitIntervalMs) {
+            emit rawFrameReady(frame);
+            rawEmitTimer.restart();
+        }
         if (!emitTimer.isValid() || emitTimer.elapsed() >= emitIntervalMs) {
             emit frameReady(matToImage(frame));
             emitTimer.restart();
