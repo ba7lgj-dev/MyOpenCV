@@ -61,6 +61,8 @@ private:
     QMutex mutex;
     QElapsedTimer emitTimer;
     int emitIntervalMs {100};
+    QElapsedTimer rawEmitTimer;
+    int rawEmitIntervalMs {100};
 };
 
 class UsbCamera : public ICamera {
